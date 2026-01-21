@@ -1,7 +1,10 @@
 /**
  * Perdagangan System JavaScript
- * Native PHP MVC Pattern
+ * Native PHP MVC Pattern with Enhanced jQuery/Ajax
  */
+
+// Load jQuery/Ajax helpers
+require('./jquery-ajax.js');
 
 $(document).ready(function() {
     // Initialize tooltips
@@ -28,22 +31,22 @@ $(document).ready(function() {
         var title = $(this).data('title') || 'Hapus Data';
         var message = $(this).data('message') || 'Apakah Anda yakin ingin menghapus data ini?';
         
-        if (confirm(title + '\n\n' + message)) {
+        Modal.confirm(title, message, function() {
             window.location.href = url;
-        }
+        });
     });
     
-    // Form validation
+    // Form validation with enhanced feedback
     $('form').on('submit', function(e) {
-        var form = $(this);
+        var form = this;
         var isValid = true;
         
         // Remove previous error messages
-        form.find('.is-invalid').removeClass('is-invalid');
-        form.find('.invalid-feedback').remove();
+        $(form).find('.is-invalid').removeClass('is-invalid');
+        $(form).find('.invalid-feedback').remove();
         
         // Validate required fields
-        form.find('[required]').each(function() {
+        $(form).find('[required]').each(function() {
             var field = $(this);
             var value = field.val();
             
@@ -55,7 +58,7 @@ $(document).ready(function() {
         });
         
         // Validate email fields
-        form.find('[type="email"]').each(function() {
+        $(form).find('[type="email"]').each(function() {
             var field = $(this);
             var value = field.val();
             var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -67,11 +70,48 @@ $(document).ready(function() {
             }
         });
         
+        // Validate numeric fields
+        $(form).find('[data-numeric="true"]').each(function() {
+            var field = $(this);
+            var value = field.val();
+            
+            if (value && !$.isNumeric(value)) {
+                field.addClass('is-invalid');
+                field.after('<div class="invalid-feedback">Field ini harus berupa angka</div>');
+                isValid = false;
+            }
+        });
+        
+        // Validate min/max length
+        $(form).find('[data-min]').each(function() {
+            var field = $(this);
+            var value = field.val();
+            var minLength = parseInt(field.data('min'));
+            
+            if (value && value.length < minLength) {
+                field.addClass('is-invalid');
+                field.after(`<div class="invalid-feedback">Minimal ${minLength} karakter</div>`);
+                isValid = false;
+            }
+        });
+        
+        $(form).find('[data-max]').each(function() {
+            var field = $(this);
+            var value = field.val();
+            var maxLength = parseInt(field.data('max'));
+            
+            if (value && value.length > maxLength) {
+                field.addClass('is-invalid');
+                field.after(`<div class="invalid-feedback">Maksimal ${maxLength} karakter</div>`);
+                isValid = false;
+            }
+        });
+        
         if (!isValid) {
             e.preventDefault();
             
-            // Scroll to first error
-            var firstError = form.find('.is-invalid').first();
+            // Scroll to first error field
+            var firstError = $(form).find('.is-invalid').first();
             if (firstError.length) {
                 firstError.focus();
                 $('html, body').animate({
@@ -81,8 +121,8 @@ $(document).ready(function() {
         }
     });
     
-    // Search functionality
-    $('#search-input').on('keyup', function(e) {
+    // Enhanced search functionality
+    $('#search-input').on('input', function(e) {
         var query = $(this).val().toLowerCase();
         var searchTarget = $(this).data('search-target') || 'table-row';
         
@@ -102,268 +142,327 @@ $(document).ready(function() {
     
     // Clear search
     $('#search-clear').on('click', function() {
-        $('#search-input').val('').trigger('keyup');
+        $('#search-input').val('').trigger('input');
     });
     
-    // Toggle sidebar
-    $('#sidebar-toggle').on('click', function() {
-        $('body').toggleClass('sidebar-collapsed');
-        $(this).find('i').toggleClass('fa-chevron-left fa-chevron-right');
+    // Enhanced button actions
+    $('.btn-action').on('click', function(e) {
+        var $button = $(this);
+        var action = $button.data('action');
+        var target = $button.data('target');
+        var confirm = $button.data('confirm');
+        
+        if (confirm) {
+            e.preventDefault();
+            Modal.confirm(
+                'Konfirmasi Aksi',
+                'Apakah Anda yakin ingin melakukan ' + action + '?',
+                function() {
+                    // Execute action
+                    if (target) {
+                        window.location.href = target;
+                    } else if (action) {
+                        // Execute custom action
+                        console.log('Executing action:', action);
+                    }
+                }
+            );
+        } else {
+            // Direct action
+            if (target) {
+                window.location.href = target;
+            }
+        }
     });
     
-    // Modal confirm
-    $('.modal-confirm').on('click', function(e) {
+    // AJAX form submission
+    $('.ajax-form').on('submit', function(e) {
         e.preventDefault();
-        var button = $(this);
-        var modal = $('#confirmModal');
-        var title = button.data('title') || 'Konfirmasi';
-        var message = button.data('message') || 'Apakah Anda yakin?';
-        var action = button.data('action');
         
-        modal.find('.modal-title').text(title);
-        modal.find('.modal-body').text(message);
-        modal.find('#confirmAction').data('action', action);
-        modal.find('#confirmAction').data('target', button.attr('href'));
+        var $form = $(this);
+        var url = $form.attr('action');
+        var method = $form.attr('method') || 'POST';
+        var successCallback = $form.data('success');
+        var errorCallback = $form.data('error');
         
-        modal.modal('show');
+        Form.submit($form, function(response) {
+            if (successCallback) {
+                successCallback(response);
+            }
+            showNotification('Data berhasil disimpan', 'success');
+            
+            // Reset form if successful
+            if ($form.data('reset')) {
+                Form.reset($form);
+            }
+        }, function(xhr, status, error) {
+            if (errorCallback) {
+                errorCallback(xhr, status, error);
+            }
+            showNotification('Terjadi kesalahan: ' + error, 'error');
+        });
     });
     
-    // Confirm action
-    $('#confirmAction').on('click', function() {
-        var action = $(this).data('action');
-        var target = $(this).data('target');
+    // Dynamic content loading
+    $('.load-content').on('click', function(e) {
+        e.preventDefault();
         
-        if (action === 'delete') {
-            window.location.href = target;
-        } else if (action === 'form') {
-            $(target).submit();
+        var $button = $(this);
+        var url = $button.data('url');
+        var target = $button.data('target');
+        var loadingText = $button.data('loading') || 'Loading...';
+        
+        Loading.show($button, loadingText);
+        
+        Ajax.get(url, null, function(response) {
+            if (target) {
+                DOM.replace(target, response.content);
+            }
+            Loading.hide($button);
+        }, function(xhr, status, error) {
+            Loading.hide($button);
+            showNotification('Gagal memuat konten', 'error');
+        });
+    });
+    
+    // Dynamic form loading
+    $('.load-form').on('click', function(e) {
+        e.preventDefault();
+        
+        var $button = $(this);
+        var url = $button.data('url');
+        var target = $button.data('target');
+        var loadingText = $button.data('loading') || 'Loading...';
+        
+        Loading.show($button, loadingText);
+        
+        Ajax.get(url, null, function(response) {
+            if (target) {
+                DOM.replace(target, response.html);
+                
+                // Initialize new form elements
+                $(target).find('form').each(function() {
+                    initializeForm($(this));
+                });
+            }
+            Loading.hide($button);
+        }, function(xhr, status, error) {
+            Loading.hide($button);
+            showNotification('Gagal memuat form', 'error');
+        });
+    });
+    
+    // Table operations
+    $('.table-sortable thead th[data-sortable="true"]').on('click', function() {
+        var $th = $(this);
+        var column = $th.index();
+        var currentDirection = $th.data('direction') || 'asc';
+        var newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+        
+        // Update sort indicator
+        $th.find('i').removeClass('bi-sort-up bi-sort-down').addClass('bi-sort-' + newDirection);
+        $th.data('direction', newDirection);
+        
+        // Sort table
+        Table.sort('#data-table', column, newDirection);
+    });
+    
+    // Table filtering
+    $('#table-search').on('input', function() {
+        var searchTerm = $(this).val();
+        Table.filter('#data-table', searchTerm);
+    });
+    
+    // Table selection
+    $('.select-all-checkbox').on('change', function() {
+        Table.selectAll('#data-table');
+    });
+    
+    // Export table data
+    $('.export-table').on('click', function() {
+        var $button = $(this);
+        var format = $button.data('format') || 'json';
+        var tableId = $button.data('table') || '#data-table';
+        
+        var data = Table.getData(tableId);
+        var content = '';
+        
+        switch (format) {
+            case 'json':
+                content = JSON.stringify(data, null, 2);
+                break;
+            case 'csv':
+                content = convertToCSV(data);
+                break;
+            case 'excel':
+                content = convertToExcel(data);
+                break;
         }
         
-        $('#confirmModal').modal('hide');
+        // Download file
+        downloadFile('table-data.' + format, content, 'text/plain');
+    });
+    
+    // Initialize forms
+    initializeForm($('form'));
+});
+
+// Initialize form elements
+function initializeForm($form) {
+    // Add dynamic validation
+    $form.find('input[data-validate]').on('blur', function() {
+        var $field = $(this);
+        var rules = $field.data('validate').split('|');
+        var validationRules = {};
+        
+        rules.forEach(function(rule) {
+            var parts = rule.split(':');
+            var ruleName = parts[0];
+            var ruleValue = parts[1] || '';
+            
+            validationRules[ruleName] = {};
+            
+            if (ruleValue.includes('required')) {
+                validationRules[ruleName].required = true;
+            }
+            
+            if (ruleValue.includes('email')) {
+                validationRules[ruleName].email = true;
+            }
+            
+            if (ruleValue.includes('min:')) {
+                validationRules[ruleName].min = parseInt(ruleValue.split(':')[1]);
+            }
+            
+            if (ruleValue.includes('max:')) {
+                validationRules[ruleName].max = parseInt(ruleValue.split(':')[1]);
+            }
+            
+            if (ruleValue.includes('pattern:')) {
+                validationRules[ruleName].pattern = ruleValue.split(':')[1];
+            }
+        });
+        
+        // Validate field
+        var result = Form.validate($field, validationRules);
+        if (!result.valid) {
+            $field.addClass('is-invalid');
+            $field.after('<div class="invalid-feedback">' + Object.values(result.errors)[0] + '</div>');
+        } else {
+            $field.removeClass('is-invalid');
+            $field.siblings('.invalid-feedback').remove();
+        }
     });
     
     // Auto-save functionality
-    var autoSaveTimer;
-    $('.auto-save').on('input change', function() {
-        clearTimeout(autoSaveTimer);
-        autoSaveTimer = setTimeout(function() {
-            saveForm();
+    $form.find('.auto-save').on('input change', function() {
+        clearTimeout(window.autoSaveTimer);
+        window.autoSaveTimer = setTimeout(function() {
+            saveForm($form);
         }, 3000);
     });
+}
+
+// Save form data
+function saveForm($form) {
+    var url = $form.data('autosave-url');
     
-    function saveForm() {
-        var form = $('.auto-save').closest('form');
-        var data = form.serialize();
-        var url = form.data('autosave-url');
+    if (url) {
+        var data = Form.toJSON($form);
         
-        if (url) {
-            $.ajax({
-                url: url,
-                type: 'POST',
-                data: data,
-                success: function(response) {
-                    showNotification('Data berhasil disimpan otomatis', 'success');
-                },
-                error: function() {
-                    showNotification('Gagal menyimpan data otomatis', 'error');
-                }
-            });
-        }
-    }
-    
-    // Notification system
-    function showNotification(message, type = 'info') {
-        var alertClass = 'alert-' + type;
-        var icon = getNotificationIcon(type);
-        
-        var notification = $('<div>')
-            .addClass('alert ' + alertClass + ' alert-dismissible fade show position-fixed')
-            .css({
-                'top': '20px',
-                'right': '20px',
-                'z-index': '9999',
-                'min-width': '300px'
-            })
-            .html(
-                '<div class="d-flex align-items-center">' +
-                '<i class="fas ' + icon + ' me-2"></i>' +
-                '<span>' + message + '</span>' +
-                '<button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>' +
-                '</div>'
-            );
-        
-        $('body').append(notification);
-        
-        // Auto-hide after 5 seconds
-        setTimeout(function() {
-            notification.fadeOut('slow', function() {
-                $(this).remove();
-            });
-        }, 5000);
-    }
-    
-    function getNotificationIcon(type) {
-        var icons = {
-            'success': 'fa-check-circle',
-            'error': 'fa-exclamation-circle',
-            'warning': 'fa-exclamation-triangle',
-            'info': 'fa-info-circle'
-        };
-        
-        return icons[type] || icons['info'];
-    }
-    
-    // Loading state
-    function showLoading(element) {
-        var loadingHtml = '<div class="text-center py-3">' +
-            '<div class="spinner-border text-primary" role="status">' +
-            '<span class="visually-hidden">Loading...</span>' +
-            '</div>' +
-            '<p class="mt-2 text-muted">Memuat data...</p>' +
-            '</div>';
-        
-        $(element).html(loadingHtml);
-    }
-    
-    // Format currency
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('id-ID', {
-            style: 'currency',
-            currency: 'IDR'
-        }).format(amount);
-    }
-    
-    // Format date
-    function formatDate(date, format = 'DD/MM/YYYY') {
-        var d = new Date(date);
-        var day = d.getDate().toString().padStart(2, '0');
-        var month = (d.getMonth() + 1).toString().padStart(2, '0');
-        var year = d.getFullYear();
-        var hours = d.getHours().toString().padStart(2, '0');
-        var minutes = d.getMinutes().toString().padStart(2, '0');
-        
-        return format
-            .replace('DD', day)
-            .replace('MM', month)
-            .replace('YYYY', year)
-            .replace('HH', hours)
-            .replace('mm', minutes);
-    }
-    
-    // Copy to clipboard
-    $('.copy-btn').on('click', function() {
-        var text = $(this).data('copy');
-        
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(text).then(function() {
-                showNotification('Tersalin ke clipboard!', 'success');
-            });
-        } else {
-            // Fallback for older browsers
-            var textArea = document.createElement('textarea');
-            textArea.value = text;
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-            showNotification('Tersalin ke clipboard!', 'success');
-        }
-    });
-    
-    // Print functionality
-    $('.print-btn').on('click', function() {
-        window.print();
-    });
-    
-    // Export functionality
-    $('.export-btn').on('click', function() {
-        var format = $(this).data('format');
-        var url = $(this).data('url');
-        
-        if (format && url) {
-            window.open(url + '?format=' + format, '_blank');
-        }
-    });
-    
-    // Number formatting
-    $('.number-format').on('input', function() {
-        var value = $(this).val();
-        var formatted = value.replace(/\D/g, '');
-        $(this).val(formatted);
-    });
-    
-    // Phone number formatting
-    $('.phone-format').on('input', function() {
-        var value = $(this).val();
-        var formatted = value.replace(/[^\d\+\-\s]/g, '');
-        $(this).val(formatted);
-    });
-    
-    // File upload preview
-    $('.file-upload').on('change', function() {
-        var file = this.files[0];
-        var preview = $(this).siblings('.file-preview');
-        
-        if (file && file.type.startsWith('image/')) {
-            var reader = new FileReader();
-            reader.onload = function(e) {
-                preview.html('<img src="' + e.target.result + '" class="img-fluid" style="max-height: 200px;">');
-            };
-            reader.readAsDataURL(file);
-        } else {
-            preview.html('<div class="text-muted">File: ' + file.name + '</div>');
-        }
-    });
-    
-    // Initialize datatables if available
-    if (typeof $.fn.DataTable !== 'undefined') {
-        $('.datatable').DataTable({
-            responsive: true,
-            language: {
-                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/id.json'
-            },
-            pageLength: 10,
-            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, 'Semua']]
+        Ajax.post(url, data, function(response) {
+            showNotification('Data tersimpan otomatis', 'success');
+        }, function(xhr, status, error) {
+            showNotification('Gagal menyimpan data otomatis', 'warning');
         });
     }
-    
-    // Keyboard shortcuts
-    $(document).on('keydown', function(e) {
-        // Ctrl+S to save
-        if (e.ctrlKey && e.key === 's') {
-            e.preventDefault();
-            $('form').submit();
-        }
-        
-        // Ctrl+F to focus search
-        if (e.ctrlKey && e.key === 'f') {
-            e.preventDefault();
-            $('#search-input').focus();
-        }
-        
-        // Escape to close modals
-        if (e.key === 'Escape') {
-            $('.modal').modal('hide');
-        }
-    });
-    
-    // Initialize tooltips for dynamic content
-    $(document).on('DOMNodeInserted', function(e) {
-        if ($(e.target).is('[data-bs-toggle="tooltip"]')) {
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-        }
-    });
-});
+}
 
-// Global functions
-window.showNotification = function(message, type) {
+// Convert data to CSV
+function convertToCSV(data) {
+    if (!data || data.length === 0) {
+        return '';
+    }
+    
+    var headers = Object.keys(data[0]);
+    var csv = headers.join(',') + '\n';
+    
+    data.forEach(function(row) {
+        var values = headers.map(function(header) {
+            return '"' + (row[header] || '').toString().replace(/"/g, '""') + '"';
+        });
+        csv += values.join(',') + '\n';
+    });
+    
+    return csv;
+}
+
+// Convert data to Excel (simplified)
+function convertToExcel(data) {
+    if (!data || data.length === 0) {
+        return '';
+    }
+    
+    var headers = Object.keys(data[0]);
+    var excel = '<table>';
+    
+    // Header row
+    excel += '<tr>';
+    headers.forEach(function(header) {
+        excel += '<th>' + header + '</th>';
+    });
+    excel += '</tr>';
+    
+    // Data rows
+    data.forEach(function(row) {
+        excel += '<tr>';
+        headers.forEach(function(header) {
+            excel += '<td>' + (row[header] || '') + '</td>';
+        });
+        excel += '</tr>';
+    });
+    
+    excel += '</table>';
+    
+    return excel;
+}
+
+// Download file
+function downloadFile(filename, content, mimeType) {
+    var blob = new Blob([content], { type: mimeType });
+    var url = window.URL.createObjectURL(blob);
+    
+    var $link = $('<a></a>')
+        .attr('href', url)
+        .attr('download', filename)
+        .css('display', 'none');
+    
+    $('body').append($link);
+    $link[0].click();
+    
+    window.URL.revokeObjectURL(url);
+    $link.remove();
+}
+
+// Global notification function (backward compatibility)
+window.showNotification = function(message, type, options) {
+    Notification.show(message, type, options);
+};
+
+// Global loading function (backward compatibility)
+window.showLoading = function(text) {
+    Loading.showGlobal(text);
+};
+
+// Global hide loading function (backward compatibility)
+window.hideLoading = function() {
+    Loading.hideGlobal();
+};
+
+// Notification system
+function showNotification(message, type = 'info') {
     var alertClass = 'alert-' + type;
-    var icon = type === 'success' ? 'fa-check-circle' : 
-              type === 'error' ? 'fa-exclamation-circle' : 
-              type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle';
+    var icon = getNotificationIcon(type);
     
     var notification = $('<div>')
         .addClass('alert ' + alertClass + ' alert-dismissible fade show position-fixed')
