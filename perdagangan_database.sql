@@ -326,6 +326,8 @@ SELECT
     bl.address,
     p.name as province_name,
     r.name as regency_name,
+    d.name as district_name,
+    v.name as village_name,
     COUNT(DISTINCT m.id_member) as total_members,
     COUNT(DISTINCT bi.id_inventory) as total_products,
     SUM(bi.stock_quantity) as total_stock,
@@ -335,12 +337,14 @@ SELECT
 FROM branches b
 LEFT JOIN companies c ON b.company_id = c.id_company
 LEFT JOIN branch_locations bl ON b.id_branch = bl.branch_id
-LEFT JOIN provinces p ON bl.province_id = p.id
-LEFT JOIN regencies r ON bl.regency_id = r.id
+LEFT JOIN alamat_db.provinces p ON bl.province_id = p.id_province
+LEFT JOIN alamat_db.regencies r ON bl.regency_id = r.id_regency
+LEFT JOIN alamat_db.districts d ON bl.district_id = d.id_district
+LEFT JOIN alamat_db.villages v ON bl.village_id = v.id_village
 LEFT JOIN members m ON b.id_branch = m.branch_id AND m.is_active = 1
 LEFT JOIN branch_inventory bi ON b.id_branch = bi.branch_id
 LEFT JOIN transactions t ON b.id_branch = t.branch_id AND t.status = 'completed'
-GROUP BY b.id_branch, b.branch_name, b.branch_code, b.branch_type, c.company_name, bl.address, p.name, r.name, b.is_active;
+GROUP BY b.id_branch, b.branch_name, b.branch_code, b.branch_type, c.company_name, bl.address, p.name, r.name, d.name, v.name, b.is_active;
 
 -- 19. Create View untuk Laporan Penjualan
 CREATE OR REPLACE VIEW v_sales_report AS
@@ -404,6 +408,16 @@ INSERT INTO branch_locations (branch_id, address, province_id, regency_id, distr
 VALUES 
 (1, 'Jl. Merdeka No. 123, Jakarta Pusat', 31, 3171, 3171010, 3171010001, '10110'),
 (2, 'Jl. Sudirman No. 456, Jakarta Selatan', 31, 3172, 3172040, 3172040001, '12190');
+
+-- 21.3.1 Insert Lokasi Perusahaan (untuk companies table)
+-- Note: companies table sudah memiliki province_id, regency_id, district_id, village_id columns
+-- Update companies table dengan alamat pusat
+UPDATE companies SET 
+    province_id = 31, 
+    regency_id = 3171, 
+    district_id = 3171010, 
+    village_id = 3171010001 
+WHERE company_code = 'TSB001';
 
 -- 21.4 Insert Kategori Produk
 INSERT INTO product_categories (category_name, description) 
@@ -549,10 +563,10 @@ SELECT * FROM v_inventory_report WHERE stock_status = 'CRITICAL' ORDER BY branch
 SHOW TABLES;
 
 -- 22.7 Tampilkan Data Lokasi
-SELECT COUNT(*) as total_provinces FROM provinces;
-SELECT COUNT(*) as total_regencies FROM regencies;
-SELECT COUNT(*) as total_districts FROM districts;
-SELECT COUNT(*) as total_villages FROM villages;
+SELECT COUNT(*) as total_provinces FROM alamat_db.provinces;
+SELECT COUNT(*) as total_regencies FROM alamat_db.regencies;
+SELECT COUNT(*) as total_districts FROM alamat_db.districts;
+SELECT COUNT(*) as total_villages FROM alamat_db.villages;
 
 -- =====================================================
 -- NEW TABLES FROM COMPREHENSIVE ANALYSIS (Tables 19-32)
