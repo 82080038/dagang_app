@@ -13,26 +13,60 @@
  * 5. Use cross-platform directory separators
  */
 
-// Platform Detection
-define('IS_WINDOWS', strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
-define('IS_LINUX', strtoupper(substr(PHP_OS, 0, 5)) === 'LINUX');
-define('IS_MAC', strtoupper(substr(PHP_OS, 0, 6)) === 'DARWIN');
+// Platform Detection (hanya jika belum didefinisikan)
+if (!defined('IS_WINDOWS')) {
+    define('IS_WINDOWS', strtoupper(substr(PHP_OS, 0, 3)) === 'WIN');
+}
+if (!defined('IS_LINUX')) {
+    define('IS_LINUX', strtoupper(substr(PHP_OS, 0, 5)) === 'LINUX');
+}
+if (!defined('IS_MAC')) {
+    define('IS_MAC', strtoupper(substr(PHP_OS, 0, 6)) === 'DARWIN');
+}
 
-// Cross-Platform File Path Constants
-define('DS', DIRECTORY_SEPARATOR); // Use DIRECTORY_SEPARATOR instead of hardcoded '/' or '\'
-define('ROOT_PATH', dirname(__DIR__));
-define('APP_PATH', ROOT_PATH . DS . 'app');
-define('PUBLIC_PATH', ROOT_PATH . DS . 'public');
-define('CONFIG_PATH', APP_PATH . DS . 'config');
-define('CORE_PATH', APP_PATH . DS . 'core');
-define('MODELS_PATH', APP_PATH . DS . 'models');
-define('CONTROLLERS_PATH', APP_PATH . DS . 'controllers');
-define('VIEWS_PATH', APP_PATH . DS . 'views');
-define('ASSETS_PATH', PUBLIC_PATH . DS . 'assets');
-define('UPLOADS_PATH', PUBLIC_PATH . DS . 'uploads');
-define('LOGS_PATH', ROOT_PATH . DS . 'logs');
-define('CACHE_PATH', ROOT_PATH . DS . 'cache');
-define('TEMP_PATH', ROOT_PATH . DS . 'temp');
+// Cross-Platform File Path Constants (hanya jika belum didefinisikan)
+if (!defined('DS')) {
+    define('DS', DIRECTORY_SEPARATOR); // Use DIRECTORY_SEPARATOR instead of hardcoded '/' or '\'
+}
+if (!defined('ROOT_PATH')) {
+    define('ROOT_PATH', dirname(__DIR__));
+}
+if (!defined('APP_PATH')) {
+    define('APP_PATH', ROOT_PATH . DS . 'app');
+}
+if (!defined('PUBLIC_PATH')) {
+    define('PUBLIC_PATH', ROOT_PATH . DS . 'public');
+}
+if (!defined('CONFIG_PATH')) {
+    define('CONFIG_PATH', APP_PATH . DS . 'config');
+}
+if (!defined('CORE_PATH')) {
+    define('CORE_PATH', APP_PATH . DS . 'core');
+}
+if (!defined('MODELS_PATH')) {
+    define('MODELS_PATH', APP_PATH . DS . 'models');
+}
+if (!defined('CONTROLLERS_PATH')) {
+    define('CONTROLLERS_PATH', APP_PATH . DS . 'controllers');
+}
+if (!defined('VIEWS_PATH')) {
+    define('VIEWS_PATH', APP_PATH . DS . 'views');
+}
+if (!defined('ASSETS_PATH')) {
+    define('ASSETS_PATH', PUBLIC_PATH . DS . 'assets');
+}
+if (!defined('UPLOADS_PATH')) {
+    define('UPLOADS_PATH', PUBLIC_PATH . DS . 'uploads');
+}
+if (!defined('LOGS_PATH')) {
+    define('LOGS_PATH', ROOT_PATH . DS . 'logs');
+}
+if (!defined('CACHE_PATH')) {
+    define('CACHE_PATH', ROOT_PATH . DS . 'cache');
+}
+if (!defined('TEMP_PATH')) {
+    define('TEMP_PATH', ROOT_PATH . DS . 'temp');
+}
 
 // File Permissions (Linux-style)
 define('DEFAULT_DIR_PERMISSIONS', 0755); // rwxr-xr-x

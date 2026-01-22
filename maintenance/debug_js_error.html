@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JavaScript Error Debug</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>JavaScript Error Debug</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Test the exact line 623
+        function testLine623() {
+            try {
+                // This is the exact structure around line 623
+                var ajaxCall = {
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            return true;
+                        } else {
+                            var message = response.message ? response.message : 'Gagal menyimpan alamat';
+                            showNotification(message, 'error');
+                            return false;
+                        }
+                    },  // This is line 623
+                    error: function() {
+                        showNotification('Terjadi kesalahan saat menyimpan alamat', 'error');
+                        return false;
+                    }
+                };
+                
+                return {status: 'pass', message: 'Line 623 structure is correct'};
+            } catch (e) {
+                return {status: 'fail', message: e.message, line: e.lineNumber};
+            }
+        }
+        
+        // Simple showNotification function
+        function showNotification(message, type, options) {
+            type = type || 'info';
+            options = options || {};
+            console.log('[' + type.toUpperCase() + '] ' + message);
+        }
+        
+        // Test the exact comma
+        function testComma() {
+            try {
+                // Test if comma after function is valid
+                var obj = {
+                    success: function() { return true; },  // This comma should be valid
+                    error: function() { return false; }
+                };
+                
+                return {status: 'pass', message: 'Comma after function is valid'};
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Test bracket notation
+        function testBracketNotation() {
+            try {
+                var obj = {success: function() {}, error: function() {}};
+                var type = 'success';
+                
+                // This might be causing issues in older browsers
+                var result = obj[type];
+                
+                return {status: 'pass', message: 'Bracket notation works'};
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Run tests
+        var tests = [
+            testLine623,
+            testComma,
+            testBracketNotation
+        ];
+        
+        var results = [];
+        var failedTests = [];
+        
+        for (var i = 0; i < tests.length; i++) {
+            var test = tests[i];
+            var result = test();
+            results.push(result);
+            
+            if (result.status === 'fail') {
+                failedTests.push(result);
+            }
+        }
+        
+        // Display results
+        var resultsDiv = document.getElementById('results');
+        var html = '<h2>JavaScript Error Debug Results</h2>';
+        
+        if (failedTests.length === 0) {
+            html += '<p style="color: green;">✅ All JavaScript tests passed!</p>';
+            html += '<p style="color: green;">✅ Line 623 structure is correct!</p>';
+            html += '<p style="color: orange;">⚠ If error still occurs, check browser console for specific error location</p>';
+        } else {
+            html += '<p style="color: red;">❌ Some JavaScript tests failed:</p><ul>';
+            for (var i = 0; i < failedTests.length; i++) {
+                html += '<li>' + failedTests[i].message + '</li>';
+            }
+            html += '</ul>';
+        }
+        
+        html += '<h3>All Test Results:</h3><ul>';
+        for (var i = 0; i < results.length; i++) {
+            var result = results[i];
+            var color = result.status === 'pass' ? 'green' : 'red';
+            html += '<li style="color: ' + color + ';">' + result.message + '</li>';
+        }
+        html += '</ul>';
+        
+        html += '<h3>Browser Info:</h3>';
+        html += '<p>User Agent: ' + navigator.userAgent + '</p>';
+        html += '<p>Date: ' + new Date().toISOString() + '</p>';
+        
+        // Test for specific syntax error
+        try {
+            eval('var obj = {success: function() {}, error: function() {}},;');
+            html += '<p style="color: green;">✅ Object with comma after function works</p>';
+        } catch (e) {
+            html += '<p style="color: red;">❌ Object with comma after function failed: ' + e.message + '</p>';
+        }
+        
+        resultsDiv.innerHTML = html;
+    </script>
+</body>
+</html>

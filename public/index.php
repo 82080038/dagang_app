@@ -7,11 +7,9 @@
 // Load configuration
 require_once __DIR__ . '/../app/config/app.php';
 require_once __DIR__ . '/../app/config/constants.php';
-require_once __DIR__ . '/../app/core/Router.php';
-require_once __DIR__ . '/../app/core/Controller.php';
 
-// Load controllers
-require_once __DIR__ . '/../app/controllers/DashboardController.php';
+// Load Autoloader
+require_once __DIR__ . '/../app/core/Autoloader.php';
 
 // Initialize router
 $router = new Router();

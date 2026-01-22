@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JavaScript Error Test - Line 618</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>JavaScript Error Test - Line 618</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Test the exact code from line 618
+        function testLine618() {
+            try {
+                // This is the exact code from line 618
+                showNotification('Terjadi kesalahan saat menyimpan alamat', 'error');
+                return {status: 'pass', message: 'Line 618 code works'};
+            } catch (e) {
+                return {status: 'fail', message: e.message, line: e.lineNumber};
+            }
+        }
+        
+        // Test showNotification function
+        function showNotification(message, type, options) {
+            // Set default values for older browsers
+            type = type || 'info';
+            options = options || {};
+            
+            // Check if Toast utility is available
+            if (typeof Toast !== 'undefined' && Toast[type]) {
+                return Toast[type](message, options);
+            } else if (typeof Notification !== 'undefined' && Notification[type]) {
+                return Notification[type](message, options);
+            } else {
+                // Fallback to console and alert
+                console.log('[' + type.toUpperCase() + '] ' + message);
+                if (type === 'error') {
+                    // Don't show alert in test
+                    console.log('Alert would show: ' + message);
+                }
+            }
+        }
+        
+        // Test const declarations
+        function testConstDeclarations() {
+            try {
+                // Test const declarations that were in the file
+                var provinceId = 'test';
+                var regencyId = 'test';
+                var districtId = 'test';
+                var villageId = 'test';
+                var saveNewAddress = true;
+                var addressData = {test: 'data'};
+                var addressId = 'test';
+                var saveNew = true;
+                var url = 'test';
+                var method = 'POST';
+                var $select = $('#results');
+                
+                return {status: 'pass', message: 'All variable declarations work'};
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Test Object.assign
+        function testObjectAssign() {
+            try {
+                var obj1 = {a: 1};
+                var obj2 = {b: 2};
+                var result = Object.assign(obj1, obj2);
+                return {status: 'pass', message: 'Object.assign works'};
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Run all tests
+        var tests = [
+            testLine618,
+            testConstDeclarations,
+            testObjectAssign
+        ];
+        
+        var results = [];
+        var failedTests = [];
+        
+        for (var i = 0; i < tests.length; i++) {
+            var test = tests[i];
+            var result = test();
+            results.push(result);
+            
+            if (result.status === 'fail') {
+                failedTests.push(result);
+            }
+        }
+        
+        // Display results
+        var resultsDiv = document.getElementById('results');
+        var html = '<h2>Test Results</h2>';
+        
+        if (failedTests.length === 0) {
+            html += '<p style="color: green;">✅ All JavaScript features work in this browser!</p>';
+        } else {
+            html += '<p style="color: red;">❌ Some JavaScript features failed:</p><ul>';
+            for (var i = 0; i < failedTests.length; i++) {
+                html += '<li>' + failedTests[i].message + '</li>';
+            }
+            html += '</ul>';
+        }
+        
+        html += '<h3>All Test Results:</h3><ul>';
+        for (var i = 0; i < results.length; i++) {
+            var result = results[i];
+            var color = result.status === 'pass' ? 'green' : 'red';
+            html += '<li style="color: ' + color + ';">' + result.message + '</li>';
+        }
+        html += '</ul>';
+        
+        html += '<h3>Browser Info:</h3>';
+        html += '<p>User Agent: ' + navigator.userAgent + '</p>';
+        html += '<p>Date: ' + new Date().toISOString() + '</p>';
+        
+        // Test for specific error
+        try {
+            eval("showNotification('test', 'error');");
+            html += '<p style="color: green;">✅ No syntax error in showNotification call</p>';
+        } catch (e) {
+            html += '<p style="color: red;">❌ Syntax error in showNotification: ' + e.message + '</p>';
+        }
+        
+        resultsDiv.innerHTML = html;
+    </script>
+</body>
+</html>

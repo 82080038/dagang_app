@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Company Details Modal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Test Company Details Modal</h2>
+        
+        <div class="row">
+            <div class="col-md-12">
+                <button class="btn btn-info" onclick="viewCompanyDetails(1)">
+                    <i class="bi bi-eye me-1"></i> View Company Details (ID: 1)
+                </button>
+                <button class="btn btn-info ms-2" onclick="viewCompanyDetails(2)">
+                    <i class="bi bi-eye me-1"></i> View Company Details (ID: 2)
+                </button>
+            </div>
+        </div>
+        
+        <div class="mt-3">
+            <div id="result" class="alert alert-info" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Company Details Modal -->
+    <div class="modal fade" id="companyDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="companyDetailModalTitle">
+                        <i class="bi bi-building me-2"></i>Detail Perusahaan
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Loading State -->
+                    <div id="companyDetailLoading" class="text-center py-4">
+                        <i class="bi bi-spinner fa-spin me-2"></i> Memuat data...
+                    </div>
+                    
+                    <!-- Error State -->
+                    <div id="companyDetailError" class="alert alert-danger" style="display: none;">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <span id="companyDetailErrorText">Gagal memuat data perusahaan</span>
+                    </div>
+                    
+                    <!-- Company Details Content -->
+                    <div id="companyDetailContent" style="display: none;">
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <h4 class="mb-3" id="detailCompanyName"></h4>
+                                <div class="row">
+                                    <div class="col-sm-6">
+                                        <p class="mb-2">
+                                            <strong>Kode:</strong> 
+                                            <code id="detailCompanyCode"></code>
+                                        </p>
+                                        <p class="mb-2">
+                                            <strong>Tipe:</strong> 
+                                            <span id="detailCompanyType" class="badge bg-primary"></span>
+                                        </p>
+                                        <p class="mb-2">
+                                            <strong>Level:</strong> 
+                                            <span id="detailScalabilityLevel" class="badge bg-info"></span>
+                                        </p>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <p class="mb-2">
+                                            <strong>Pemilik:</strong> 
+                                            <span id="detailOwnerName"></span>
+                                        </p>
+                                        <p class="mb-2">
+                                            <strong>Kategori:</strong> 
+                                            <span id="detailBusinessCategory"></span>
+                                        </p>
+                                        <p class="mb-2">
+                                            <strong>Status:</strong> 
+                                            <span id="detailStatus" class="badge"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">Statistik</h6>
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <div class="fw-bold text-primary" id="detailBranchCount">0</div>
+                                                <small class="text-muted">Cabang</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="fw-bold text-success" id="detailMemberCount">0</div>
+                                                <small class="text-muted">Member</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="fw-bold text-warning" id="detailProductCount">0</div>
+                                                <small class="text-muted">Produk</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Contact Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h6><i class="bi bi-telephone me-2"></i>Kontak</h6>
+                                <p class="mb-2">
+                                    <strong>Email:</strong> 
+                                    <a href="#" id="detailEmail"></a>
+                                </p>
+                                <p class="mb-2">
+                                    <strong>Telepon:</strong> 
+                                    <span id="detailPhone"></span>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><i class="bi bi-file-text me-2"></i>Dokumen</h6>
+                                <p class="mb-2">
+                                    <strong>NPWP:</strong> 
+                                    <span id="detailTaxId"></span>
+                                </p>
+                                <p class="mb-2">
+                                    <strong>SIUP:</strong> 
+                                    <span id="detailBusinessLicense"></span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <!-- Address Information -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6><i class="bi bi-geo-alt me-2"></i>Alamat</h6>
+                                <div id="detailAddress" class="bg-light p-3 rounded"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Branches List -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h6><i class="bi bi-diagram-2 me-2"></i>Daftar Cabang</h6>
+                                <div id="detailBranchesList">
+                                    <div class="text-muted">Belum ada cabang</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-primary" id="editFromDetailBtn">
+                        <i class="bi bi-pencil me-1"></i> Edit Perusahaan
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function viewCompanyDetails(companyId) {
+        // Show loading state
+        $('#companyDetailLoading').show();
+        $('#companyDetailError').hide();
+        $('#companyDetailContent').hide();
+        $('#companyDetailModal').modal('show');
+        
+        $('#result').html('🔄 Loading company details for ID: ' + companyId).show();
+        
+        // Fetch company details via AJAX
+        $.ajax({
+            url: 'index.php?page=companies&action=details&id=' + companyId,
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status == "success") {
+                    populateCompanyDetails(response.data);
+                    $('#companyDetailLoading').hide();
+                    $('#companyDetailContent').show();
+                    $('#result').html('✅ Company details loaded successfully!').show();
+                } else {
+                    $('#companyDetailLoading').hide();
+                    $('#companyDetailError').show();
+                    $('#companyDetailErrorText').text(response.message || 'Gagal memuat data perusahaan');
+                    $('#result').html('❌ Error: ' + (response.message || 'Unknown error')).show();
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#companyDetailLoading').hide();
+                $('#companyDetailError').show();
+                $('#companyDetailErrorText').text('Terjadi kesalahan: ' + error);
+                $('#result').html('❌ Network error: ' + error).show();
+            }
+        });
+    }
+    
+    function populateCompanyDetails(data) {
+        var company = data.company;
+        var statistics = data.statistics || {};
+        var branches = data.branches || {};
+        
+        // Basic Information
+        $('#detailCompanyName').text(company.company_name || '-');
+        $('#detailCompanyCode').text(company.company_code || '-');
+        $('#detailCompanyType').text(company.company_type || '-').removeClass().addClass('badge bg-primary');
+        $('#detailOwnerName').text(company.owner_name || '-');
+        $('#detailBusinessCategory').text(company.business_category || '-');
+        
+        // Scalability Level Badge
+        var levelBadge = '';
+        var level = company.scalability_level;
+        if (level !== null && level !== undefined && level !== '') {
+            var levelNum = parseInt(level);
+            switch(levelNum) {
+                case 1: levelBadge = 'bg-primary'; break;
+                case 2: levelBadge = 'bg-info'; break;
+                case 3: levelBadge = 'bg-warning'; break;
+                case 4: levelBadge = 'bg-secondary'; break;
+                case 5: levelBadge = 'bg-dark'; break;
+                case 6: levelBadge = 'bg-danger'; break;
+                default: levelBadge = 'bg-light text-dark';
+            }
+        } else {
+            levelBadge = 'bg-light text-dark';
+        }
+        $('#detailScalabilityLevel').text('Level ' + (level || '-')).removeClass().addClass('badge ' + levelBadge);
+        
+        // Status Badge
+        var statusBadge = company.is_active ? 'bg-success' : 'bg-danger';
+        var statusText = company.is_active ? 'Aktif' : 'Non-aktif';
+        $('#detailStatus').text(statusText).removeClass().addClass('badge ' + statusBadge);
+        
+        // Statistics
+        $('#detailBranchCount').text(statistics.total_branches || branches.branches_count || 0);
+        $('#detailMemberCount').text(statistics.total_members || 0);
+        $('#detailProductCount').text(statistics.total_products || 0);
+        
+        // Contact Information
+        var email = company.email || '-';
+        if (email !== '-') {
+            $('#detailEmail').attr('href', 'mailto:' + email).text(email);
+        } else {
+            $('#detailEmail').attr('href', '#').text(email);
+        }
+        $('#detailPhone').text(company.phone || '-');
+        
+        // Documents
+        $('#detailTaxId').text(company.tax_id || '-');
+        $('#detailBusinessLicense').text(company.business_license || '-');
+        
+        // Address
+        var addressHtml = '';
+        if (company.full_address) {
+            addressHtml = company.full_address;
+        } else if (company.address) {
+            addressHtml = company.address;
+        } else {
+            addressHtml = 'Alamat tidak tersedia';
+        }
+        $('#detailAddress').html(addressHtml);
+        
+        // Branches List
+        if (statistics.total_branches > 0 || branches.branches_count > 0) {
+            $('#detailBranchesList').html(
+                '<div class="alert alert-info">' +
+                '<i class="bi bi-info-circle me-2"></i>' +
+                'Perusahaan ini memiliki ' + (statistics.total_branches || branches.branches_count || 0) + ' cabang' +
+                '</div>'
+            );
+        } else {
+            $('#detailBranchesList').html('<div class="text-muted">Belum ada cabang</div>');
+        }
+        
+        // Setup edit button
+        $('#editFromDetailBtn').off('click').on('click', function() {
+            $('#companyDetailModal').modal('hide');
+            alert('Edit functionality would open edit modal for company ID: ' + company.id_company);
+        });
+    }
+    </script>
+</body>
+</html>

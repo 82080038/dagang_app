@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/../core/Model.php';
+require_once __DIR__ . '/Address.php';
 
 class Company extends Model {
     protected $table = 'companies';
@@ -13,15 +14,22 @@ class Company extends Model {
         'company_name',
         'company_code',
         'company_type',
-        'business_category',
         'scalability_level',
+        'business_category',
         'owner_name',
         'phone',
         'email',
-        'address',
+        'address_id',
         'tax_id',
         'business_license',
-        'is_active'
+        'is_active',
+        'last_sync_at',
+        'sync_status',
+        'api_access_key',
+        'webhook_url',
+        'auto_refresh_interval',
+        'created_at',
+        'updated_at'
     ];
     
     /**
@@ -44,13 +52,6 @@ class Company extends Model {
      */
     public function getByType($type) {
         return $this->findBy('company_type', $type);
-    }
-    
-    /**
-     * Get Companies by Scalability Level
-     */
-    public function getByScalabilityLevel($level) {
-        return $this->findBy('scalability_level', $level);
     }
     
     /**
@@ -78,20 +79,50 @@ class Company extends Model {
     /**
      * Get Company Statistics
      */
-    public function getStatistics() {
-        $sql = "SELECT 
-                    COUNT(*) as total_companies,
-                    COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_companies,
-                    COUNT(CASE WHEN scalability_level = 1 THEN 1 END) as level_1_count,
-                    COUNT(CASE WHEN scalability_level = 2 THEN 1 END) as level_2_count,
-                    COUNT(CASE WHEN scalability_level = 3 THEN 1 END) as level_3_count,
-                    COUNT(CASE WHEN scalability_level = 4 THEN 1 END) as level_4_count,
-                    COUNT(CASE WHEN scalability_level = 5 THEN 1 END) as level_5_count,
-                    COUNT(CASE WHEN scalability_level = 6 THEN 1 END) as level_6_count
-                FROM {$this->table}";
-        
-        return $this->queryOne($sql);
+    public function getStatistics($companyId = null) {
+        if ($companyId) {
+            $sql = "
+                SELECT 
+                    c.id_company,
+                    c.company_name,
+                    COUNT(DISTINCT b.id_branch) as total_branches,
+                    COUNT(DISTINCT m.member_id) as total_members,
+                    COUNT(DISTINCT p.product_id) as total_products,
+                    SUM(bi.stock_quantity) as total_inventory,
+                    COALESCE(SUM(t.total_amount), 0) as total_sales
+                FROM companies c
+                LEFT JOIN branches b ON c.id_company = b.company_id
+                LEFT JOIN members m ON b.id_branch = m.branch_id AND m.is_active = 1
+                LEFT JOIN branch_inventory bi ON b.id_branch = bi.branch_id
+                LEFT JOIN products p ON bi.product_id = p.product_id
+                LEFT JOIN transactions t ON b.id_branch = t.branch_id AND t.transaction_type = 'SALE'
+                WHERE c.id_company = :company_id
+                GROUP BY c.id_company
+            ";
+            
+            return $this->queryOne($sql, ['company_id' => $companyId]);
+        } else {
+            // Return overall statistics
+            $sql = "SELECT 
+                        COUNT(*) as total_companies,
+                        COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_companies,
+                        COUNT(CASE WHEN company_type = 'individual' THEN 1 END) as individual_count,
+                        COUNT(CASE WHEN company_type = 'pusat' THEN 1 END) as pusat_count,
+                        COUNT(CASE WHEN company_type = 'cabang' THEN 1 END) as cabang_count,
+                        COUNT(CASE WHEN company_type = 'franchise' THEN 1 END) as franchise_count,
+                        COUNT(CASE WHEN company_type = 'koperasi' THEN 1 END) as koperasi_count,
+                        COUNT(CASE WHEN company_type = 'individual' THEN 1 END) as level_1_count,
+                        COUNT(CASE WHEN company_type = 'warung' THEN 1 END) as level_2_count,
+                        COUNT(CASE WHEN company_type = 'toko' THEN 1 END) as level_3_count,
+                        COUNT(CASE WHEN company_type = 'minimarket' THEN 1 END) as level_4_count,
+                        COUNT(CASE WHEN company_type = 'distributor' THEN 1 END) as level_5_count,
+                        COUNT(CASE WHEN company_type = 'enterprise' THEN 1 END) as level_6_count
+                    FROM {$this->table}";
+            
+            return $this->queryOne($sql);
+        }
     }
+    
     
     /**
      * Get Company with Branches Count
@@ -114,12 +145,105 @@ class Company extends Model {
             'company_name' => 'required|min:3|max:200',
             'company_code' => 'required|min:2|max:50',
             'company_type' => 'required',
+            'scalability_level' => 'required|in:1,2,3,4,5,6',
             'owner_name' => 'required|min:3|max:200',
             'email' => 'email',
-            'phone' => 'min:10|max:20'
+            'phone' => 'min:10|max:20',
+            'address_id' => 'integer',
+            'street_address' => 'required|min:3|max:255',
+            'province_id' => 'required|numeric',
+            'regency_id' => 'required|numeric',
+            'district_id' => 'required|numeric',
+            'village_id' => 'required|numeric'
         ];
         
         return $this->validate($data, $rules);
+    }
+    
+    /**
+     * Create company with address
+     */
+    public function createCompany($data) {
+        // Handle address creation if address data provided
+        if (isset($data['street_address']) && !isset($data['address_id'])) {
+            $addressData = [
+                'street_address' => $data['street_address'],
+                'province_id' => $data['province_id'] ?? null,
+                'regency_id' => $data['regency_id'] ?? null,
+                'district_id' => $data['district_id'] ?? null,
+                'village_id' => $data['village_id'] ?? null,
+                'postal_code' => $data['postal_code'] ?? null
+            ];
+            
+            $addressModel = new Address();
+            $addressId = $addressModel->createAddress($addressData);
+            $data['address_id'] = $addressId;
+            
+            // Remove address fields from company data
+            unset($data['street_address'], $data['province_id'], $data['regency_id'], 
+                  $data['district_id'], $data['village_id'], $data['postal_code']);
+        }
+        
+        return $this->create($data);
+    }
+    
+    /**
+     * Update company with address
+     */
+    public function updateCompany($id, $data) {
+        // Handle address update if address data provided
+        if (isset($data['street_address']) && isset($data['address_id'])) {
+            $addressData = [
+                'street_address' => $data['street_address'],
+                'province_id' => $data['province_id'] ?? null,
+                'regency_id' => $data['regency_id'] ?? null,
+                'district_id' => $data['district_id'] ?? null,
+                'village_id' => $data['village_id'] ?? null,
+                'postal_code' => $data['postal_code'] ?? null
+            ];
+            
+            $addressModel = new Address();
+            $addressModel->updateAddress($data['address_id'], $addressData);
+            
+            // Remove address fields from company data
+            unset($data['street_address'], $data['province_id'], $data['regency_id'], 
+                  $data['district_id'], $data['village_id'], $data['postal_code']);
+        }
+        
+        return $this->update($id, $data);
+    }
+    
+    /**
+     * Get company with address details
+     */
+    public function getCompanyWithAddress($id) {
+        $sql = "
+            SELECT 
+                c.*,
+                a.street_address,
+                a.postal_code,
+                p.name as province_name,
+                r.name as regency_name,
+                d.name as district_name,
+                v.name as village_name,
+                CONCAT(
+                    a.street_address, ', ',
+                    v.name, ', ',
+                    d.name, ', ',
+                    r.name, ', ',
+                    p.name,
+                    IF(a.postal_code IS NOT NULL, CONCAT(' ', a.postal_code), '')
+                ) as full_address
+            FROM companies c
+            LEFT JOIN addresses a ON c.address_id = a.id_address
+            LEFT JOIN alamat_db.provinces p ON a.province_id = p.id
+            LEFT JOIN alamat_db.regencies r ON a.regency_id = r.id
+            LEFT JOIN alamat_db.districts d ON a.district_id = d.id
+            LEFT JOIN alamat_db.villages v ON a.village_id = v.id
+            WHERE c.id_company = :id
+        ";
+        
+        return $this->queryOne($sql, ['id' => $id]);
     }
     
     /**
@@ -225,6 +349,46 @@ class Company extends Model {
             '5' => 'Level 5 - Distributor/Perusahaan Menengah',
             '6' => 'Level 6 - Perusahaan Besar/Franchise'
         ];
+    }
+    
+    /**
+     * Get total count of companies
+     */
+    public function getTotalCount() {
+        $sql = "SELECT COUNT(*) as count FROM {$this->table}";
+        $result = $this->queryOne($sql);
+        return $result['count'] ?? 0;
+    }
+    
+    /**
+     * Get company with branches
+     */
+    public function getWithBranches($companyId = null) {
+        if ($companyId) {
+            $sql = "
+                SELECT 
+                    c.*,
+                    COUNT(b.id_branch) as branches_count
+                FROM companies c
+                LEFT JOIN branches b ON c.id_company = b.company_id
+                WHERE c.id_company = :company_id
+                GROUP BY c.id_company
+            ";
+            
+            return $this->queryOne($sql, ['company_id' => $companyId]);
+        } else {
+            $sql = "
+                SELECT 
+                    c.*,
+                    COUNT(b.id_branch) as branches_count
+                FROM companies c
+                LEFT JOIN branches b ON c.id_company = b.company_id
+                GROUP BY c.id_company
+                ORDER BY c.company_name
+            ";
+            
+            return $this->query($sql);
+        }
     }
 }
 ?>

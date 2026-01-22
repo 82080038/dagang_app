@@ -9,12 +9,22 @@
 // Include cross-platform compatibility
 require_once __DIR__ . '/cross_platform.php';
 
-// Database Configuration
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'perdagangan_system');
-define('DB_CHARSET', 'utf8mb4');
+// Database Configuration (ambil dari environment jika tersedia)
+if (!defined('DB_HOST')) {
+    define('DB_HOST', getEnvironmentVariable('DB_HOST', 'localhost'));
+}
+if (!defined('DB_USER')) {
+    define('DB_USER', getEnvironmentVariable('DB_USER', 'root'));
+}
+if (!defined('DB_PASS')) {
+    define('DB_PASS', getEnvironmentVariable('DB_PASS', ''));
+}
+if (!defined('DB_NAME')) {
+    define('DB_NAME', getEnvironmentVariable('DB_NAME', 'perdagangan_system'));
+}
+if (!defined('DB_CHARSET')) {
+    define('DB_CHARSET', getEnvironmentVariable('DB_CHARSET', 'utf8mb4'));
+}
 
 // Cross-platform database connection
 class Database {

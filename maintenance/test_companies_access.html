@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Companies Page Access</title>
+</head>
+<body>
+    <h1>Debug Companies Page Access</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Test if companies page is accessible
+        fetch('http://localhost/dagang/index.php?page=companies')
+            .then(response => response.text())
+            .then(html => {
+                var resultsDiv = document.getElementById('results');
+                
+                // Check if it's login page or companies page
+                if (html.includes('loginUsername') || html.includes('loginPassword')) {
+                    resultsDiv.innerHTML = 
+                        '<p style="color: orange;">⚠ User is NOT logged in</p>' +
+                        '<p>Redirected to login page</p>' +
+                        '<p>Please login first to access companies page</p>' +
+                        '<p><a href="http://localhost/dagang/index.php?page=login" target="_blank">Go to Login</a></p>';
+                } else if (html.includes('Manajemen Perusahaan')) {
+                    resultsDiv.innerHTML = 
+                        '<p style="color: green;">✅ User IS logged in</p>' +
+                        '<p>Companies page loaded successfully</p>' +
+                        '<p>Checking for JavaScript errors...</p>';
+                    
+                    // Check for JavaScript errors in the loaded page
+                    setTimeout(() => {
+                        try {
+                            // Try to execute some JavaScript that should be on companies page
+                            eval('var test = "test"; console.log("test");');
+                            resultsDiv.innerHTML += '<p style="color: green;">✅ JavaScript execution test passed</p>';
+                        } catch (e) {
+                            resultsDiv.innerHTML += '<p style="color: red;">❌ JavaScript execution test failed: ' + e.message + '</p>';
+                        }
+                    }, 1000);
+                } else {
+                    resultsDiv.innerHTML = 
+                        '<p style="color: red;">❌ Unknown page content</p>' +
+                        '<p>Neither login nor companies page detected</p>' +
+                        '<p>Page preview:</p>' +
+                        '<pre>' + html.substring(0, 500) + '...</pre>';
+                }
+            })
+            .catch(error => {
+                var resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = 
+                    '<p style="color: red;">❌ Failed to fetch page: ' + error.message + '</p>';
+            });
+    </script>
+</body>
+</html>

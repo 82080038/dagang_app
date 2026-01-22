@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/View.php';
+require_once __DIR__ . '/../utils/BrowserDetector.php';
 
 class Controller {
     protected $view;
@@ -12,7 +13,38 @@ class Controller {
     
     public function __construct() {
         $this->view = new View();
+        $this->checkBrowserCompatibility();
     }
+    
+    /**
+     * Check browser compatibility
+     */
+    protected function checkBrowserCompatibility() {
+        // Skip browser check for AJAX requests
+        if ($this->isAjaxRequest()) {
+            return;
+        }
+        
+        // Skip browser check if already checked in this session
+        if (isset($_SESSION['browser_checked'])) {
+            return;
+        }
+        
+        $browserSupport = BrowserDetector::isSupported();
+        
+        if (!$browserSupport['supported']) {
+            // Mark as checked to avoid infinite redirect
+            $_SESSION['browser_checked'] = true;
+            
+            // Redirect to browser check page
+            header('Location: browser_check.php');
+            exit;
+        }
+        
+        // Mark as checked
+        $_SESSION['browser_checked'] = true;
+    }
+    
     
     /**
      * Load View
@@ -28,6 +60,7 @@ class Controller {
     protected function render($view, $data = []) {
         $this->data = array_merge($this->data, $data);
         $this->data['content'] = $this->view->render($view, $this->data, true);
+        $this->data['browser_support'] = BrowserDetector::getBrowserSupportData();
         return $this->view->render('layouts/main', $this->data);
     }
     
@@ -155,7 +188,19 @@ class Controller {
     protected function requireAuth() {
         if (!$this->isLoggedIn()) {
             $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
-            $this->redirect(BASE_URL . '/login');
+            $this->redirect('index.php?page=login');
+        }
+    }
+    
+    /**
+     * Require Authentication for API (JSON error instead of redirect)
+     */
+    protected function requireAuthJson() {
+        if (!$this->isLoggedIn()) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
         }
     }
     
@@ -289,6 +334,60 @@ class Controller {
         }
         
         return htmlspecialchars(trim($input), ENT_QUOTES, 'UTF-8');
+    }
+    
+    /**
+     * Check if Request is AJAX
+     */
+    protected function isAjaxRequest() {
+        return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+               strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    }
+    
+    /**
+     * Generate URL
+     */
+    protected function url($path = '') {
+        return BASE_URL . '/' . ltrim($path, '/');
+    }
+    
+    /**
+     * Check if menu is active
+     */
+    protected function isMenuActive($page) {
+        $currentPage = $_GET['page'] ?? 'dashboard';
+        return $currentPage === $page;
+    }
+    
+    /**
+     * Check if current page matches pattern
+     */
+    protected function isActive($pattern) {
+        $currentPage = $_GET['page'] ?? 'dashboard';
+        return fnmatch($pattern, $currentPage);
+    }
+    
+    /**
+     * Display flash messages
+     */
+    protected function displayFlash() {
+        if (isset($_SESSION['flash'])) {
+            $flash = $_SESSION['flash'];
+            unset($_SESSION['flash']);
+            
+            $html = '';
+            foreach ($flash as $type => $messages) {
+                foreach ($messages as $message) {
+                    $alertClass = $type === 'error' ? 'danger' : $type;
+                    $html .= '<div class="alert alert-' . $alertClass . ' alert-dismissible fade show" role="alert" data-flash="true">';
+                    $html .= htmlspecialchars($message);
+                    $html .= '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                    $html .= '</div>';
+                }
+            }
+            return $html;
+        }
+        return '';
     }
     
     /**

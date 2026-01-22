@@ -28,8 +28,31 @@ class DashboardController extends Controller {
         $companyStats = $this->companyModel->getStatistics();
         $branchStats = $this->branchModel->getStatistics();
         
-        // Get recent companies
-        $recentCompanies = $this->companyModel->getAll(5);
+        // Get recent companies with available fields only
+        $recentCompanies = $this->companyModel->query("
+            SELECT 
+                id_company,
+                company_name,
+                company_code,
+                company_type,
+                owner_name,
+                phone,
+                email,
+                is_active,
+                created_at,
+                'retail' as business_category,
+                CASE 
+                    WHEN company_type IN ('individual', 'warung', 'kios') THEN 1
+                    WHEN company_type IN ('toko_kelontong', 'minimarket') THEN 2
+                    WHEN company_type IN ('pengusaha_menengah', 'distributor') THEN 3
+                    WHEN company_type IN ('perusahaan_besar', 'franchise', 'koperasi') THEN 4
+                    ELSE 1
+                END as scalability_level
+            FROM companies 
+            WHERE is_active = 1 
+            ORDER BY created_at DESC 
+            LIMIT 5
+        ");
         
         // Get active branches with inventory
         $branchesWithInventory = $this->branchModel->getWithInventorySummary();
@@ -50,6 +73,41 @@ class DashboardController extends Controller {
     }
     
     /**
+     * Get today's sales statistics
+     */
+    private function getTodaySales() {
+        $sql = "SELECT 
+                    COUNT(*) as total_transactions,
+                    COALESCE(SUM(total_amount), 0) as total_sales,
+                    COALESCE(AVG(total_amount), 0) as avg_transaction
+                FROM transactions 
+                WHERE DATE(created_at) = CURDATE() 
+                AND transaction_type = 'SALE'";
+        
+        return $this->companyModel->queryOne($sql);
+    }
+    
+    /**
+     * Get low stock alerts
+     */
+    private function getLowStockAlerts() {
+        $sql = "SELECT 
+                    p.product_id,
+                    p.product_name,
+                    p.min_stock_level,
+                    COALESCE(SUM(bi.quantity), 0) as total_stock
+                FROM products p
+                LEFT JOIN branch_inventory bi ON p.product_id = bi.product_id
+                WHERE p.is_active = 1
+                GROUP BY p.product_id
+                HAVING total_stock <= p.min_stock_level OR total_stock = 0
+                ORDER BY total_stock ASC
+                LIMIT 10";
+        
+        return $this->companyModel->query($sql);
+    }
+    
+    /**
      * API Dashboard Statistics
      */
     public function apiStats() {
@@ -64,7 +122,40 @@ class DashboardController extends Controller {
             'total_active_entities' => $companyStats['active_companies'] + $branchStats['active_branches']
         ];
         
-        $this->success('Dashboard statistics retrieved', $data);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Dashboard statistics retrieved',
+            'data' => $data
+        ]);
+        exit;
+    }
+    
+    /**
+     * API Real-time Statistics
+     */
+    public function apiRealtimeStats() {
+        $this->requireAuth();
+        
+        // Get today's statistics
+        $todaySales = $this->getTodaySales();
+        $openBranches = $this->branchModel->getOpenBranches();
+        $lowStockAlerts = $this->getLowStockAlerts();
+        
+        $data = [
+            'today_sales' => $todaySales,
+            'open_branches_count' => count($openBranches),
+            'low_stock_alerts' => count($lowStockAlerts),
+            'last_updated' => date('Y-m-d H:i:s')
+        ];
+        
+        header('Content-Type: application/json');
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Real-time statistics retrieved',
+            'data' => $data
+        ]);
+        exit;
     }
     
     /**
@@ -99,8 +190,13 @@ class DashboardController extends Controller {
     public function apiScalabilityDistribution() {
         $this->requireAuth();
         
+        // Disable error reporting to prevent HTML output in JSON
+        error_reporting(0);
+        ini_set('display_errors', 0);
+        
         $companyStats = $this->companyModel->getStatistics();
         
+        // Ensure all required fields exist with default values
         $data = [
             'labels' => [
                 'Level 1 - Individu',
@@ -111,12 +207,12 @@ class DashboardController extends Controller {
                 'Level 6 - Enterprise'
             ],
             'data' => [
-                $companyStats['level_1_count'],
-                $companyStats['level_2_count'],
-                $companyStats['level_3_count'],
-                $companyStats['level_4_count'],
-                $companyStats['level_5_count'],
-                $companyStats['level_6_count']
+                isset($companyStats['level_1_count']) ? $companyStats['level_1_count'] : 0,
+                isset($companyStats['level_2_count']) ? $companyStats['level_2_count'] : 0,
+                isset($companyStats['level_3_count']) ? $companyStats['level_3_count'] : 0,
+                isset($companyStats['level_4_count']) ? $companyStats['level_4_count'] : 0,
+                isset($companyStats['level_5_count']) ? $companyStats['level_5_count'] : 0,
+                isset($companyStats['level_6_count']) ? $companyStats['level_6_count'] : 0
             ]
         ];
         
@@ -129,8 +225,13 @@ class DashboardController extends Controller {
     public function apiBusinessSegmentDistribution() {
         $this->requireAuth();
         
+        // Disable error reporting to prevent HTML output in JSON
+        error_reporting(0);
+        ini_set('display_errors', 0);
+        
         $branchStats = $this->branchModel->getStatistics();
         
+        // Ensure all required fields exist with default values
         $data = [
             'labels' => [
                 'Ultra Mikro',
@@ -141,12 +242,12 @@ class DashboardController extends Controller {
                 'Enterprise'
             ],
             'data' => [
-                $branchStats['ultra_mikro_count'],
-                $branchStats['mikro_count'],
-                $branchStats['kecil_menengah_count'],
-                $branchStats['menengah_count'],
-                $branchStats['besar_count'],
-                $branchStats['enterprise_count']
+                isset($branchStats['ultra_mikro_count']) ? $branchStats['ultra_mikro_count'] : 0,
+                isset($branchStats['mikro_count']) ? $branchStats['mikro_count'] : 0,
+                isset($branchStats['kecil_menengah_count']) ? $branchStats['kecil_menengah_count'] : 0,
+                isset($branchStats['menengah_count']) ? $branchStats['menengah_count'] : 0,
+                isset($branchStats['besar_count']) ? $branchStats['besar_count'] : 0,
+                isset($branchStats['enterprise_count']) ? $branchStats['enterprise_count'] : 0
             ]
         ];
         

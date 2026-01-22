@@ -14,13 +14,25 @@ class Branch extends Model {
         'branch_name',
         'branch_code',
         'branch_type',
-        'business_segment',
         'owner_name',
         'phone',
         'email',
         'location_id',
+        'address',
+        'address_detail',
+        'province_id',
+        'regency_id',
+        'district_id',
+        'village_id',
         'operation_hours',
-        'is_active'
+        'is_active',
+        'last_sync_at',
+        'sync_status',
+        'real_time_status',
+        'last_ping_at',
+        'auto_refresh_enabled',
+        'created_at',
+        'updated_at'
     ];
     
     /**
@@ -43,6 +55,41 @@ class Branch extends Model {
         return $this->query($sql);
     }
     
+    public function getAll($limit = 10, $offset = 0, $filters = []) {
+        $sql = "SELECT b.*, c.company_name 
+                FROM {$this->table} b
+                LEFT JOIN companies c ON b.company_id = c.id_company
+                WHERE 1=1";
+        $params = [];
+        if (isset($filters['company_id']) && !empty($filters['company_id'])) {
+            $sql .= " AND b.company_id = :company_id";
+            $params['company_id'] = $filters['company_id'];
+        }
+        if (isset($filters['search']) && !empty($filters['search'])) {
+            $sql .= " AND (b.branch_name LIKE :search OR b.branch_code LIKE :search OR b.owner_name LIKE :search)";
+            $params['search'] = '%' . $filters['search'] . '%';
+        }
+        $sql .= " ORDER BY b.branch_name ASC LIMIT $limit OFFSET $offset";
+        return $this->query($sql, $params);
+    }
+    
+    public function getTotalCount($filters = []) {
+        $sql = "SELECT COUNT(*) as total 
+                FROM {$this->table} b
+                WHERE 1=1";
+        $params = [];
+        if (isset($filters['company_id']) && !empty($filters['company_id'])) {
+            $sql .= " AND b.company_id = :company_id";
+            $params['company_id'] = $filters['company_id'];
+        }
+        if (isset($filters['search']) && !empty($filters['search'])) {
+            $sql .= " AND (b.branch_name LIKE :search OR b.branch_code LIKE :search OR b.owner_name LIKE :search)";
+            $params['search'] = '%' . $filters['search'] . '%';
+        }
+        $result = $this->queryOne($sql, $params);
+        return $result['total'] ?? 0;
+    }
+    
     /**
      * Get Branches by Company
      */
@@ -60,13 +107,6 @@ class Branch extends Model {
      */
     public function getByType($type) {
         return $this->findBy('branch_type', $type);
-    }
-    
-    /**
-     * Get Branch by Business Segment
-     */
-    public function getByBusinessSegment($segment) {
-        return $this->findBy('business_segment', $segment);
     }
     
     /**
@@ -119,12 +159,18 @@ class Branch extends Model {
         $sql = "SELECT 
                     COUNT(*) as total_branches,
                     COUNT(CASE WHEN is_active = 1 THEN 1 END) as active_branches,
-                    COUNT(CASE WHEN business_segment = 'ultra_mikro' THEN 1 END) as ultra_mikro_count,
-                    COUNT(CASE WHEN business_segment = 'mikro' THEN 1 END) as mikro_count,
-                    COUNT(CASE WHEN business_segment = 'kecil_menengah' THEN 1 END) as kecil_menengah_count,
-                    COUNT(CASE WHEN business_segment = 'menengah' THEN 1 END) as menengah_count,
-                    COUNT(CASE WHEN business_segment = 'besar' THEN 1 END) as besar_count,
-                    COUNT(CASE WHEN business_segment = 'enterprise' THEN 1 END) as enterprise_count
+                    COUNT(CASE WHEN branch_type = 'toko' THEN 1 END) as toko_count,
+                    COUNT(CASE WHEN branch_type = 'warung' THEN 1 END) as warung_count,
+                    COUNT(CASE WHEN branch_type = 'minimarket' THEN 1 END) as minimarket_count,
+                    COUNT(CASE WHEN branch_type = 'gerai' THEN 1 END) as gerai_count,
+                    COUNT(CASE WHEN branch_type = 'kios' THEN 1 END) as kios_count,
+                    COUNT(CASE WHEN branch_type = 'online' THEN 1 END) as online_count,
+                    COUNT(CASE WHEN branch_type = 'warung' THEN 1 END) as ultra_mikro_count,
+                    COUNT(CASE WHEN branch_type = 'kios' THEN 1 END) as mikro_count,
+                    COUNT(CASE WHEN branch_type = 'toko' THEN 1 END) as kecil_menengah_count,
+                    COUNT(CASE WHEN branch_type = 'minimarket' THEN 1 END) as menengah_count,
+                    COUNT(CASE WHEN branch_type = 'gerai' THEN 1 END) as besar_count,
+                    COUNT(CASE WHEN branch_type = 'online' THEN 1 END) as enterprise_count
                 FROM {$this->table}";
         
         $params = [];
@@ -148,7 +194,11 @@ class Branch extends Model {
             'branch_type' => 'required',
             'owner_name' => 'required|min:3|max:200',
             'email' => 'email',
-            'phone' => 'min:10|max:20'
+            'phone' => 'min:10|max:20',
+            'address_detail' => 'required|min:3|max:255',
+            'province_id' => 'required|numeric',
+            'regency_id' => 'required|numeric',
+            'district_id' => 'required|numeric'
         ];
         
         return $this->validate($data, $rules);
@@ -282,14 +332,30 @@ class Branch extends Model {
             return false;
         }
         
-        $hours = $operationHours[$currentDay];
+        $todayHours = $operationHours[$currentDay];
         
-        if ($hours === 'closed') {
-            return false;
+        // Handle complex JSON format: {"open":"08:00","close":"21:00"}
+        if (is_array($todayHours) && isset($todayHours['open']) && isset($todayHours['close'])) {
+            $openTime = $todayHours['open'];
+            $closeTime = $todayHours['close'];
+            return $currentTime >= trim($openTime) && $currentTime <= trim($closeTime);
         }
         
-        if (strpos($hours, '-') !== false) {
-            list($openTime, $closeTime) = explode('-', $hours);
+        // Handle simple string format: "08:00-21:00"
+        if (is_string($todayHours)) {
+            if ($todayHours === 'closed') {
+                return false;
+            }
+            
+            if (strpos($todayHours, '-') !== false) {
+                list($openTime, $closeTime) = explode('-', $todayHours);
+                return $currentTime >= trim($openTime) && $currentTime <= trim($closeTime);
+            }
+        }
+        
+        // Handle array format: ["08:00", "21:00"]
+        if (is_array($todayHours) && count($todayHours) === 2) {
+            list($openTime, $closeTime) = $todayHours;
             return $currentTime >= trim($openTime) && $currentTime <= trim($closeTime);
         }
         

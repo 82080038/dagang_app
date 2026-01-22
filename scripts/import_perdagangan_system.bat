@@ -1,0 +1,16 @@
+@echo off
+setlocal enabledelayedexpansion
+set "DB_HOST=%DB_HOST%"
+if "%DB_HOST%"=="" set "DB_HOST=localhost"
+set "DB_USER=%DB_USER%"
+if "%DB_USER%"=="" set "DB_USER=root"
+set "DB_PASS=%DB_PASS%"
+if "%DB_PASS%"=="" set "DB_PASS="
+set "DB_NAME=%DB_NAME%"
+if "%DB_NAME%"=="" set "DB_NAME=perdagangan_system"
+set "ROOT=%~dp0.."
+set "SQL1=%ROOT%\perdagangan_database.sql"
+set "SQL2=%ROOT%\database_migrations\create_centralized_addresses.sql"
+mysql -h "%DB_HOST%" -u "%DB_USER%" -p"%DB_PASS%" -e "CREATE DATABASE IF NOT EXISTS `%DB_NAME%` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -h "%DB_HOST%" -u "%DB_USER%" -p"%DB_PASS%" "%DB_NAME%" < "%SQL1%"
+mysql -h "%DB_HOST%" -u "%DB_USER%" -p"%DB_PASS%" "%DB_NAME%" < "%SQL2%"

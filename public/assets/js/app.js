@@ -3,8 +3,7 @@
  * Native PHP MVC Pattern with Enhanced jQuery/Ajax
  */
 
-// Load jQuery/Ajax helpers
-require('./jquery-ajax.js');
+// Note: jquery-ajax.js is loaded separately in the layout
 
 $(document).ready(function() {
     // Initialize tooltips
@@ -28,8 +27,10 @@ $(document).ready(function() {
     $('.delete-btn').on('click', function(e) {
         e.preventDefault();
         var url = $(this).attr('href');
-        var title = $(this).data('title') || 'Hapus Data';
-        var message = $(this).data('message') || 'Apakah Anda yakin ingin menghapus data ini?';
+        var title = $(this).data('title');
+        if (!title) title = 'Hapus Data';
+        var message = $(this).data('message');
+        if (!message) message = 'Apakah Anda yakin ingin menghapus data ini?';
         
         Modal.confirm(title, message, function() {
             window.location.href = url;
@@ -124,7 +125,8 @@ $(document).ready(function() {
     // Enhanced search functionality
     $('#search-input').on('input', function(e) {
         var query = $(this).val().toLowerCase();
-        var searchTarget = $(this).data('search-target') || 'table-row';
+        var searchTarget = $(this).data('search-target');
+        if (!searchTarget) searchTarget = 'table-row';
         
         if (searchTarget === 'table-row') {
             $('tbody tr').each(function() {
@@ -181,7 +183,8 @@ $(document).ready(function() {
         
         var $form = $(this);
         var url = $form.attr('action');
-        var method = $form.attr('method') || 'POST';
+        var method = $form.attr('method');
+        if (!method) method = 'POST';
         var successCallback = $form.data('success');
         var errorCallback = $form.data('error');
         
@@ -256,7 +259,8 @@ $(document).ready(function() {
     $('.table-sortable thead th[data-sortable="true"]').on('click', function() {
         var $th = $(this);
         var column = $th.index();
-        var currentDirection = $th.data('direction') || 'asc';
+        var currentDirection = $th.data('direction');
+        if (!currentDirection) currentDirection = 'asc';
         var newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
         
         // Update sort indicator
@@ -281,8 +285,10 @@ $(document).ready(function() {
     // Export table data
     $('.export-table').on('click', function() {
         var $button = $(this);
-        var format = $button.data('format') || 'json';
-        var tableId = $button.data('table') || '#data-table';
+        var format = $button.data('format');
+        if (!format) format = 'json';
+        var tableId = $button.data('table');
+        if (!tableId) tableId = '#data-table';
         
         var data = Table.getData(tableId);
         var content = '';
@@ -318,7 +324,8 @@ function initializeForm($form) {
         rules.forEach(function(rule) {
             var parts = rule.split(':');
             var ruleName = parts[0];
-            var ruleValue = parts[1] || '';
+            var ruleValue = parts[1];
+        if (!ruleValue) ruleValue = '';
             
             validationRules[ruleName] = {};
             
@@ -444,9 +451,85 @@ function downloadFile(filename, content, mimeType) {
     $link.remove();
 }
 
+// Toast Notification System
+window.Toast = {
+    show: function(message, type, options) {
+        type = type || 'info';
+        options = options || {};
+        
+        var delay = options.delay || 5000;
+        var autohide = options.autohide !== false;
+        
+        // Create toast container if it doesn't exist
+        if ($('#toast-container').length === 0) {
+            $('body').append('<div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;"></div>');
+        }
+        
+        var toastId = 'toast-' + Date.now();
+        var toastClass = 'bg-' + (type === 'error' ? 'danger' : type);
+        var iconClass = this.getIcon(type);
+        
+        var toastHtml = '<div id="' + toastId + '" class="toast" role="alert" aria-live="assertive" aria-atomic="true">' +
+            '<div class="toast-header ' + toastClass + ' text-white">' +
+            '<i class="' + iconClass + ' me-2"></i>' +
+            '<strong class="me-auto">Notifikasi</strong>' +
+            '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>' +
+            '</div>' +
+            '<div class="toast-body">' + message + '</div>' +
+            '</div>';
+        
+        $('#toast-container').append(toastHtml);
+        
+        var toastElement = document.getElementById(toastId);
+        var toast = new bootstrap.Toast(toastElement, {
+            delay: delay,
+            autohide: autohide
+        });
+        
+        toast.show();
+        
+        // Auto remove after delay
+        if (autohide) {
+            setTimeout(function() {
+                toast.hide();
+                setTimeout(function() {
+                    $(toastElement).remove();
+                }, 500);
+            }, delay);
+        }
+    },
+    
+    success: function(message, options) {
+        this.show(message, 'success', options);
+    },
+    
+    error: function(message, options) {
+        this.show(message, 'error', options);
+    },
+    
+    warning: function(message, options) {
+        this.show(message, 'warning', options);
+    },
+    
+    info: function(message, options) {
+        this.show(message, 'info', options);
+    },
+    
+    getIcon: function(type) {
+        var icons = {
+            'success': 'fas fa-check-circle',
+            'error': 'fas fa-exclamation-circle',
+            'warning': 'fas fa-exclamation-triangle',
+            'info': 'fas fa-info-circle'
+        };
+        
+        return icons[type] || icons.info;
+    }
+};
+
 // Global notification function (backward compatibility)
 window.showNotification = function(message, type, options) {
-    Notification.show(message, type, options);
+    Toast.show(message, type, options);
 };
 
 // Global loading function (backward compatibility)
@@ -459,35 +542,6 @@ window.hideLoading = function() {
     Loading.hideGlobal();
 };
 
-// Notification system
-function showNotification(message, type = 'info') {
-    var alertClass = 'alert-' + type;
-    var icon = getNotificationIcon(type);
-    
-    var notification = $('<div>')
-        .addClass('alert ' + alertClass + ' alert-dismissible fade show position-fixed')
-        .css({
-            'top': '20px',
-            'right': '20px',
-            'z-index': '9999',
-            'min-width': '300px'
-        })
-        .html(
-            '<div class="d-flex align-items-center">' +
-            '<i class="fas ' + icon + ' me-2"></i>' +
-            '<span>' + message + '</span>' +
-            '<button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>' +
-            '</div>'
-        );
-    
-    $('body').append(notification);
-    
-    setTimeout(function() {
-        notification.fadeOut('slow', function() {
-            $(this).remove();
-        });
-    }, 5000);
-};
 
 window.formatCurrency = function(amount) {
     return new Intl.NumberFormat('id-ID', {
@@ -497,7 +551,7 @@ window.formatCurrency = function(amount) {
 };
 
 window.formatDate = function(date, format) {
-    format = format || 'DD/MM/YYYY';
+        var format = format || 'DD/MM/YYYY';
     var d = new Date(date);
     var day = d.getDate().toString().padStart(2, '0');
     var month = (d.getMonth() + 1).toString().padStart(2, '0');

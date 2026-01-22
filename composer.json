@@ -1,0 +1,10 @@
+{
+    "name": "dagang/app",
+    "description": "Aplikasi Perdagangan Multi-Cabang",
+    "autoload": {
+        "classmap": [
+            "app/"
+        ]
+    },
+    "require": {}
+}

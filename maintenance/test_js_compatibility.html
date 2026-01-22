@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JavaScript Compatibility Test</title>
+</head>
+<body>
+    <h1>JavaScript Compatibility Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Test Object.assign
+        function testObjectAssign() {
+            try {
+                var obj1 = {a: 1};
+                var obj2 = {b: 2};
+                var result = Object.assign(obj1, obj2);
+                return {status: 'pass', message: 'Object.assign works'};
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Test const declarations
+        function testConst() {
+            try {
+                const test = "test";
+                return {status: 'pass', message: 'const works'};
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Test arrow functions
+        function testArrowFunction() {
+            try {
+                var test = function() { return "test"; };
+                var result = test();
+                return {status: 'pass', message: 'Arrow function works'};
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Test template literals
+        function testTemplateLiterals() {
+            try {
+                    var test = "Hello " + "World";
+                    return {status: 'pass', message: 'String concatenation works'};
+                } catch (e) {
+                    return {status: 'fail', message: e.message};
+                }
+        }
+        
+        // Run all tests
+        var tests = [
+            testObjectAssign,
+            testConst,
+            testArrowFunction,
+            testTemplateLiterals
+        ];
+        
+        var results = [];
+        var failedTests = [];
+        
+        for (var i = 0; i < tests.length; i++) {
+            var test = tests[i];
+            var result = test();
+            results.push(result);
+            
+            if (result.status === 'fail') {
+                failedTests.push(result);
+            }
+        }
+        
+        // Display results
+        var resultsDiv = document.getElementById('results');
+        var html = '<h2>Test Results</h2>';
+        
+        if (failedTests.length === 0) {
+            html += '<p style="color: green;">✅ All JavaScript features work in this browser!</p>';
+        } else {
+            html += '<p style="color: red;">❌ Some JavaScript features failed:</p><ul>';
+            for (var i = 0; i < failedTests.length; i++) {
+                html += '<li>' + failedTests[i].message + '</li>';
+            }
+            html += '</ul>';
+        }
+        
+        html += '<h3>Browser Info:</h3>';
+        html += '<p>User Agent: ' + navigator.userAgent + '</p>';
+        html += '<p>Date: ' + new Date().toISOString() + '</p>';
+        
+        resultsDiv.innerHTML = html;
+    </script>
+</body>
+</html>

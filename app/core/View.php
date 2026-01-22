@@ -113,16 +113,17 @@ class View {
      * Check if Current Page
      */
     public function isActive($path) {
-        $currentPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-        return $currentPath === $path;
+        $currentPage = isset($_GET['page']) ? $_GET['page'] : 'login';
+        $slug = trim($path, '/');
+        return $currentPage === $slug;
     }
     
     /**
      * Check if Current Menu Active
      */
     public function isMenuActive($menu) {
-        $currentPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-        return strpos($currentPath, $menu) === 0;
+        $currentPage = isset($_GET['page']) ? $_GET['page'] : 'login';
+        return $currentPage === $menu || strpos($currentPage, $menu) === 0;
     }
     
     /**
@@ -280,6 +281,29 @@ class View {
         }
         
         return $html;
+    }
+    
+    /**
+     * Check if user is logged in
+     */
+    public function isLoggedIn() {
+        return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+    }
+    
+    /**
+     * Get current user data
+     */
+    public function getCurrentUser() {
+        if ($this->isLoggedIn()) {
+            return [
+                'id' => $_SESSION['user_id'] ?? null,
+                'name' => $_SESSION['user_name'] ?? '',
+                'email' => $_SESSION['user_email'] ?? '',
+                'position' => $_SESSION['user_position'] ?? '',
+                'branch_id' => $_SESSION['branch_id'] ?? null
+            ];
+        }
+        return null;
     }
 }
 ?>

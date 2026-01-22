@@ -1,0 +1,94 @@
+/* Compact Sidebar Styles */
+.sidebar {
+    min-width: 60px !important;
+    max-width: 60px !important;
+}
+
+.sidebar .nav-link {
+    padding: 0.75rem 0.5rem !important;
+    text-align: center;
+    font-size: 0.875rem;
+    transition: all var(--transition-medium);
+}
+
+    background-color: var(--sidebar-hover-bg);
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 0.25rem;
+
+.sidebar .nav-link i {
+    font-size: 1.25rem;
+    display: block;
+    margin: 0 auto 0.25rem auto;
+}
+
+.sidebar .nav-link span {
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+/* Show text only on large screens */
+@media (min-width: 992px) {
+    .sidebar {
+        min-width: 180px !important;
+        max-width: 180px !important;
+    }
+    
+    .sidebar .nav-link {
+        padding: 0.75rem 1rem !important;
+        text-align: left;
+    }
+    
+    .sidebar .nav-link i {
+        display: inline;
+        margin: 0 0.5rem 0 0;
+    }
+    
+    .sidebar .nav-link span {
+        font-size: 0.875rem;
+    }
+}
+
+/* Compact header for sidebar */
+.sidebar .text-center h5 {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.sidebar .text-center small {
+    font-size: 0.65rem;
+    display: none;
+}
+
+@media (min-width: 992px) {
+    .sidebar .text-center small {
+        display: block;
+    }
+}
+
+/* Main content adjustments */
+.main-content {
+    margin-left: 0;
+}
+
+@media (min-width: 768px) {
+    .main-content {
+        margin-left: 60px;
+    }
+}
+
+@media (min-width: 992px) {
+    .main-content {
+        margin-left: 180px;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .sidebar {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+}

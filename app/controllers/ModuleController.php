@@ -405,7 +405,7 @@ class ModuleController extends Controller {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $companyId = $this->getUserId();
             
-            if (isset($_FILES['import_file']) {
+            if (isset($_FILES['import_file'])) {
                 $file = $_FILES['import_file'];
                 
                 if ($file['error'] === UPLOAD_ERR_OK) {

@@ -1,0 +1,10 @@
+.env
+logs/
+cache/
+temp/
+public/uploads/
+database_exports/*.sql
+*.log
+node_modules/
+vendor/
+*.tmp

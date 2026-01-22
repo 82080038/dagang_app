@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Login Status</title>
+</head>
+<body>
+    <h1>Debug Login Status</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Test if user is logged in by checking session
+        fetch('http://localhost/dagang/index.php?page=companies')
+            .then(response => response.text())
+            .then(html => {
+                // Check if it's the login page or companies page
+                if (html.includes('loginUsername') || html.includes('loginPassword')) {
+                    document.getElementById('results').innerHTML = 
+                        '<p style="color: red;">❌ User is NOT logged in</p>' +
+                        '<p>Redirecting to login page...</p>' +
+                        '<p>Page content preview:</p>' +
+                        '<pre>' + html.substring(0, 500) + '...</pre>';
+                } else if (html.includes('Daftar Perusahaan')) {
+                    document.getElementById('results').innerHTML = 
+                        '<p style="color: green;">✅ User IS logged in</p>' +
+                        '<p>Companies page loaded successfully</p>' +
+                        '<p>Checking for JavaScript errors...</p>';
+                    
+                    // Check for JavaScript errors
+                    setTimeout(() => {
+                        try {
+                            // Try to execute some JavaScript from the page
+                            eval('var test = "test";');
+                            document.getElementById('results').innerHTML += 
+                                '<p style="color: green;">✅ JavaScript execution test passed</p>';
+                        } catch (e) {
+                            document.getElementById('results').innerHTML += 
+                                '<p style="color: red;">❌ JavaScript execution test failed: ' + e.message + '</p>';
+                        }
+                    }, 1000);
+                } else {
+                    document.getElementById('results').innerHTML = 
+                        '<p style="color: orange;">⚠ Unknown page content</p>' +
+                        '<p>Page content preview:</p>' +
+                        '<pre>' + html.substring(0, 500) + '...</pre>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('results').innerHTML = 
+                    '<p style="color: red;">❌ Failed to fetch page: ' + error.message + '</p>';
+            });
+    </script>
+</body>
+</html>

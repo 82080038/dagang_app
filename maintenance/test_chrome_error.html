@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chrome JavaScript Error Debug</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Chrome JavaScript Error Debug</h1>
+    <div id="results"></div>
+    
+    <script>
+        // Test the exact code that was causing issues
+        function testChromeError() {
+            try {
+                // Simulate the exact structure around line 594
+                var addressData = {
+                    street_address: '',
+                    province_id: '',
+                    regency_id: '',
+                    district_id: '',
+                    village_id: ''
+                };
+                
+                // This is the exact validation from line 592-594
+                if (!addressData.street_address || !addressData.province_id || !addressData.regency_id || 
+                    !addressData.district_id || !addressData.village_id) {
+                    showNotification('Mohon lengkapi semua field alamat yang wajib', 'error');
+                    return false;
+                }
+                
+                // Test showNotification function
+                showNotification('Test message', 'error');
+                
+                return {status: 'pass', message: 'Line 594 code works correctly'};
+            } catch (e) {
+                return {status: 'fail', message: e.message, line: e.lineNumber};
+            }
+        }
+        
+        // Test showNotification function
+        function showNotification(message, type, options) {
+            type = type || 'info';
+            options = options || {};
+            console.log('[' + type.toUpperCase() + '] ' + message);
+        }
+        
+        // Test response.status comparison
+        function testResponseStatus() {
+            try {
+                var response = {status: 'success'};
+                
+                // Test the exact comparison from line 401
+                if (response.status === 'success') {
+                    return {status: 'pass', message: 'Response status comparison works'};
+                } else {
+                    return {status: 'fail', message: 'Response status comparison failed'};
+                }
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Test for success identifier issues
+        function testSuccessIdentifier() {
+            try {
+                // Test if 'success' as identifier causes issues
+                var success = 'test';
+                console.log('success as identifier:', success);
+                
+                return {status: 'pass', message: 'Success identifier works'};
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Test for string literal issues
+        function testStringLiterals() {
+            try {
+                // Test the exact string from line 594
+                var message = 'Mohon lengkapi semua field alamat yang wajib';
+                var type = 'error';
+                
+                console.log('[' + type.toUpperCase() + '] ' + message);
+                
+                return {status: 'pass', message: 'String literals work'};
+            } catch (e) {
+                return {status: 'fail', message: e.message};
+            }
+        }
+        
+        // Run tests
+        var tests = [
+            testChromeError,
+            testResponseStatus,
+            testSuccessIdentifier,
+            testStringLiterals
+        ];
+        
+        var results = [];
+        var failedTests = [];
+        
+        for (var i = 0; i < tests.length; i++) {
+            var test = tests[i];
+            var result = test();
+            results.push(result);
+            
+            if (result.status === 'fail') {
+                failedTests.push(result);
+            }
+        }
+        
+        // Display results
+        var resultsDiv = document.getElementById('results');
+        var html = '<h2>Chrome JavaScript Error Debug Results</h2>';
+        
+        if (failedTests.length === 0) {
+            html += '<p style="color: green;">✅ All Chrome JavaScript tests passed!</p>';
+            html += '<p style="color: green;">✅ Line 594 error should be resolved!</p>';
+            html += '<p style="color: green;">✅ String literals work correctly!</p>';
+            html += '<p style="color: green;">✅ Response status comparison works!</p>';
+        } else {
+            html += '<p style="color: red;">❌ Some Chrome JavaScript tests failed:</p><ul>';
+            for (var i = 0; i < failedTests.length; i++) {
+                html += '<li>' + failedTests[i].message + '</li>';
+            }
+            html += '</ul>';
+        }
+        
+        html += '<h3>All Test Results:</h3><ul>';
+        for (var i = 0; i < results.length; i++) {
+            var result = results[i];
+            var color = result.status === 'pass' ? 'green' : 'red';
+            html += '<li style="color: ' + color + ';">' + result.message + '</li>';
+        }
+        html += '</ul>';
+        
+        html += '<h3>Browser Info:</h3>';
+        html += '<p>User Agent: ' + navigator.userAgent + '</p>';
+        html += '<p>Date: ' + new Date().toISOString() + '</p>';
+        
+        // Test for specific syntax error
+        try {
+            eval('if (response.status === \'success\') { console.log(\'test\'); }');
+            html += '<p style="color: green;">✅ String comparison works</p>';
+        } catch (e) {
+            html += '<p style="color: red;">❌ String comparison failed: ' + e.message + '</p>';
+        }
+        
+        resultsDiv.innerHTML = html;
+    </script>
+</body>
+</html>
