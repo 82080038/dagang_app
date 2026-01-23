@@ -19,11 +19,11 @@ try {
     $sql1 = "
         CREATE TABLE IF NOT EXISTS addresses (
             id_address INT AUTO_INCREMENT PRIMARY KEY,
-            street_address TEXT NOT NULL COMMENT 'Alamat jalan lengkap (manual input)',
             province_id INT NOT NULL COMMENT 'Reference to alamat_db.provinces.id',
             regency_id INT NOT NULL COMMENT 'Reference to alamat_db.regencies.id', 
             district_id INT NOT NULL COMMENT 'Reference to alamat_db.districts.id',
             village_id INT NOT NULL COMMENT 'Reference to alamat_db.villages.id',
+            address_detail TEXT NOT NULL COMMENT 'Alamat jalan lengkap (manual input)',
             postal_code VARCHAR(10) NULL COMMENT 'Kode pos (optional)',
             latitude DECIMAL(10,8) NULL COMMENT 'Koordinat latitude (optional)',
             longitude DECIMAL(11,8) NULL COMMENT 'Koordinat longitude (optional)',
@@ -120,7 +120,7 @@ try {
     if ($check == 0) {
         $sampleAddresses = [
             [
-                'street_address' => 'Jl. Merdeka No. 123, RT 001/RW 002',
+                'address_detail' => 'Jl. Merdeka No. 123, RT 001/RW 002',
                 'province_id' => 1,
                 'regency_id' => 1,
                 'district_id' => 1,
@@ -128,7 +128,7 @@ try {
                 'postal_code' => '10310'
             ],
             [
-                'street_address' => 'Jl. Sudirman No. 456, RT 003/RW 004',
+                'address_detail' => 'Jl. Sudirman No. 456, RT 003/RW 004',
                 'province_id' => 1,
                 'regency_id' => 2,
                 'district_id' => 2,
@@ -136,7 +136,7 @@ try {
                 'postal_code' => '10250'
             ],
             [
-                'street_address' => 'Jl. Gatot Subroto No. 789, RT 005/RW 006',
+                'address_detail' => 'Jl. Gatot Subroto No. 789, RT 005/RW 006',
                 'province_id' => 1,
                 'regency_id' => 3,
                 'district_id' => 3,
@@ -147,8 +147,8 @@ try {
         
         foreach ($sampleAddresses as $address) {
             $db->query("
-                INSERT INTO addresses (street_address, province_id, regency_id, district_id, village_id, postal_code)
-                VALUES (:street_address, :province_id, :regency_id, :district_id, :village_id, :postal_code)
+                INSERT INTO addresses (address_detail, province_id, regency_id, district_id, village_id, postal_code)
+                VALUES (:address_detail, :province_id, :regency_id, :district_id, :village_id, :postal_code)
             ", $address);
         }
         

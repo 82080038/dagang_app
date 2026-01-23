@@ -22,21 +22,38 @@
 - Perusahaan
   - Menambahkan section alamat terstruktur di form “Tambah/Editar Perusahaan”.
   - Alamat Jalan berada tepat di bawah Desa/Kelurahan.
-  - Validasi wajib alamat di create/update (street_address, province_id, regency_id, district_id, village_id).
+  - Validasi wajib alamat di create/update (province_id, regency_id, district_id, village_id, address_detail).
   - Kode Pos tampil otomatis dari `alamat_db`.
   - Prefill alamat saat edit, termasuk dropdown cascade.
+  - **FIXED**: Field name inconsistency - sekarang menggunakan `address_detail` secara konsisten
 - Cabang
   - Menambahkan section alamat terstruktur di “Tambah Cabang”.
   - Provinsi/Kabupaten/Kecamatan mengikuti dan terkunci dari perusahaan induk; Desa opsional.
   - Alamat Jalan wajib; Kode Pos tampil otomatis.
+  - **FIXED**: Field name inconsistency - sekarang menggunakan `address_detail` secara konsisten
 - Register
   - Menambahkan halaman register dengan section alamat lengkap (wajib).
   - Kode Pos tampil otomatis; Alamat Jalan berada di bawah Desa/Kelurahan.
+  - **FIXED**: Field name inconsistency - sekarang menggunakan `address_detail` secara konsisten
 - Navigasi otomatis & aksesibilitas
   - Disiapkan secara global agar berlaku di semua form (termasuk modal).
   - Mempertahankan navigasi keyboard manual (Tab/Shift+Tab).
 - Konfigurasi database
   - Koneksi membaca variabel environment (.env) agar mudah dipindahkan lintas mesin.
+
+## 🚨 Critical Issues Fixed (Latest Updates)
+- **Address Field Standardization**: 
+  - Fixed inconsistency between `street_address` vs `address_detail` across entire application
+  - Standardized to `address_detail` in all components (database, models, controllers, views, JavaScript)
+  - Edit Perusahaan functionality now works correctly
+- **Database Schema Updates**:
+  - Added address fields to companies and branches tables
+  - Updated addresses table to use `address_detail` instead of `street_address`
+  - Created comprehensive migration scripts
+- **Comprehensive Testing**:
+  - Created test scripts to verify address functionality
+  - Fixed all maintenance file references
+  - Updated documentation with new address management system
 
 ## Database & Migrasi
 - Database utama: `perdagangan_system`
@@ -67,6 +84,11 @@
 - Import skema dan migrasi:
   - `mysql -u <user> -p -D perdagangan_system < perdagangan_database.sql`
   - `mysql -u <user> -p -D perdagangan_system < database_migrations/create_centralized_addresses.sql`
+- **NEW**: Run address field standardization migrations:
+  - `mysql -u <user> -p -D perdagangan_system < database_migrations/fix_address_field_names.sql`
+  - `mysql -u <user> -p -D perdagangan_system < database_migrations/add_address_fields_to_main_tables.sql`
+- **NEW**: Test address functionality:
+  - `php maintenance/test_address_functionality.php`
 - Set `.env` sesuai kredensial DB di mesin tujuan.
 - Pastikan `alamat_db` tersedia dan user memiliki hak SELECT.
 - Verifikasi endpoints alamat:

@@ -14,6 +14,7 @@ Aplikasi perdagangan multi-cabang yang dibangun dengan **PHP Native OOP** dan **
 - **Modal CRUD** - Create, Edit, Delete via modal
 - **Notifications** - Toast notifications untuk feedback
 - **Loading States** - Visual feedback saat proses AJAX
+- **Address Management** - Cascade dropdowns untuk alamat Indonesia
 
 ### **✅ jQuery Features:**
 - **Event Handling** - Click, change, input events
@@ -22,6 +23,14 @@ Aplikasi perdagangan multi-cabang yang dibangun dengan **PHP Native OOP** dan **
 - **Form Validation** - Client-side validation
 - **Data Tables** - Interactive tables dengan sorting
 - **Charts Integration** - Chart.js dengan data dinamis
+- **Cascade Dropdowns** - Dynamic address form fields
+
+### **✅ Address Management System:**
+- **Centralized Address Storage** - Single source of truth untuk alamat
+- **Indonesia Region Support** - Integrasi dengan `alamat_db`
+- **Cascade Dropdowns** - Provinsi → Kabupaten → Kecamatan → Desa
+- **Auto Postal Code** - Kode pos otomatis dari desa
+- **Field Standardization** - Konsisten `address_detail` di seluruh aplikasi
 
 ## 🛠️ **TECHNOLOGY STACK**
 
@@ -135,6 +144,79 @@ $('#searchInput').on('input', function() {
 });
 ```
 
+### **4. Address Cascade Dropdowns:**
+```javascript
+// Load provinces on page load
+function loadProvinces() {
+    $.ajax({
+        url: 'index.php?page=address&action=get-provinces',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                var html = '<option value="">Pilih Provinsi</option>';
+                response.data.forEach(function(province) {
+                    html += '<option value="' + province.id + '">' + province.name + '</option>';
+                });
+                $('#province_id').html(html);
+            }
+        }
+    });
+}
+
+// Province change handler
+$('#province_id').on('change', function() {
+    var provinceId = $(this).val();
+    if (provinceId) {
+        loadRegencies(provinceId);
+        $('#regency_id').prop('disabled', false);
+    }
+});
+
+// Load regencies by province
+function loadRegencies(provinceId) {
+    $.ajax({
+        url: 'index.php?page=address&action=get-regencies&province_id=' + provinceId,
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.status === 'success') {
+                var html = '<option value="">Pilih Kabupaten/Kota</option>';
+                response.data.forEach(function(regency) {
+                    html += '<option value="' + regency.id + '">' + regency.name + '</option>';
+                });
+                $('#regency_id').html(html);
+            }
+        }
+    });
+}
+
+// Village change - auto-fill postal code
+$('#village_id').on('change', function() {
+    var selectedOption = $(this).find('option:selected');
+    var postalCode = selectedOption.data('postal-code');
+    
+    if (postalCode) {
+        $('#postal_code').val(postalCode);
+    } else {
+        // Fetch from API if not in data
+        var villageId = $(this).val();
+        if (villageId) {
+            $.ajax({
+                url: 'index.php?page=address&action=get-postal-code&village_id=' + villageId,
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success' && response.data.postal_code) {
+                        $('#postal_code').val(response.data.postal_code);
+                    }
+                }
+            });
+        }
+    }
+});
+```
+
 ## 🎨 **UI/UX FEATURES**
 
 ### **Animations:**
@@ -174,6 +256,44 @@ $('#refreshBtn').click(function() {
 - **Branch Status** - Open/closed branches
 - **Stock Alerts** - Low stock notifications
 - **User Activity** - Recent activities
+
+## 📊 **API ENDPOINTS**
+
+### **Dashboard APIs:**
+- `GET /index.php?page=dashboard&action=api-stats` - General statistics
+- `GET /index.php?page=dashboard&action=api-realtime` - Real-time data
+- `GET /index.php?page=dashboard&action=api-activity` - Recent activity
+- `GET /index.php?page=dashboard&action=api-scalability` - Scalability distribution
+- `GET /index.php?page=dashboard&action=api-segments` - Business segment distribution
+
+### **Company APIs:**
+- `GET /index.php?page=companies` - List companies (with pagination)
+- `POST /index.php?page=companies&action=create` - Create company
+- `POST /index.php?page=companies&action=update` - Update company
+- `GET /index.php?page=companies&action=get&id={id}` - Get company details
+- `POST /index.php?page=companies&action=delete&id={id}` - Delete company
+- `POST /index.php?page=companies&action=toggle-status&id={id}` - Toggle status
+
+### **Address APIs (AJAX Only):**
+- `GET /index.php?page=address&action=get-provinces` - Get all provinces
+- `GET /index.php?page=address&action=get-regencies&province_id={id}` - Get regencies by province
+- `GET /index.php?page=address&action=get-districts&regency_id={id}` - Get districts by regency
+- `GET /index.php?page=address&action=get-villages&district_id={id}` - Get villages by district
+- `GET /index.php?page=address&action=get-postal-code&village_id={id}` - Get postal code by village
+
+### **Response Format:**
+```json
+{
+    "status": "success|error",
+    "message": "Human readable message",
+    "data": {
+        // Response data
+    },
+    "errors": {
+        // Validation errors (if any)
+    }
+}
+```
 
 ## 📊 **CHARTS INTEGRATION**
 
@@ -284,6 +404,83 @@ function debounce(func, wait) {
 
 $('#search').on('input', debounce(handleSearch, 300));
 ```
+
+## 🔧 **TROUBLESHOOTING**
+
+### **Common Issues & Solutions:**
+
+#### **Address Dropdown Not Loading:**
+```javascript
+// Check browser console for errors
+console.log('Loading provinces...');
+
+// Verify database connection
+$.ajax({
+    url: 'index.php?page=address&action=get-provinces',
+    type: 'GET',
+    dataType: 'json',
+    error: function(xhr, status, error) {
+        console.error('Provinces load error:', error);
+        console.log('XHR status:', xhr.status);
+        console.log('Response text:', xhr.responseText);
+    }
+});
+```
+
+#### **Field Name Inconsistency (FIXED):**
+- **Problem**: Mixed `street_address` vs `address_detail` usage
+- **Solution**: All components now use `address_detail` consistently
+- **Verification**: Check form field names match validation rules
+
+#### **Edit Company Not Working:**
+```javascript
+// Check if company data loads correctly
+function editCompany(companyId) {
+    console.log('Editing company:', companyId);
+    
+    $.ajax({
+        url: 'index.php?page=companies&action=get&id=' + companyId,
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            console.log('Company data:', response);
+            // Check if address_detail field is populated
+            if (response.data.company.address_detail) {
+                console.log('Address found:', response.data.company.address_detail);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Load company error:', error);
+        }
+    });
+}
+```
+
+#### **Postal Code Auto-Fill Not Working:**
+```javascript
+// Check village data structure
+$('#village_id').on('change', function() {
+    var selectedOption = $(this).find('option:selected');
+    console.log('Selected option:', selectedOption);
+    console.log('Postal code data:', selectedOption.data('postal-code'));
+    
+    // Verify API call
+    var villageId = $(this).val();
+    if (villageId) {
+        console.log('Fetching postal code for village:', villageId);
+        // ... rest of the code
+    }
+});
+```
+
+### **Debugging Checklist:**
+1. ✅ Check browser console for JavaScript errors
+2. ✅ Verify network requests in DevTools
+3. ✅ Check PHP error logs
+4. ✅ Verify database connection and permissions
+5. ✅ Test API endpoints directly
+6. ✅ Check form field names match validation
+7. ✅ Verify CSRF tokens are included
 
 ## 🔐 **SECURITY FEATURES**
 

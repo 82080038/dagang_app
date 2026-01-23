@@ -95,11 +95,13 @@
         // Auto-load postal code when village is selected
         $('#village_id').on('change', function() {
             var villageId = $(this).val();
+            // Always clear postal code first when village changes
+            $('#postal_code').val('');
+            
             if (villageId) {
                 loadPostalCode(villageId);
-            } else {
-                $('#postal_code').val('');
             }
+            // If villageId is empty/null, postal code remains empty (cleared above)
         });
         
         function loadProvinces() {

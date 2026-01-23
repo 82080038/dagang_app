@@ -81,7 +81,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Alamat Jalan *</label>
-                            <textarea name="street_address" id="street_address" class="form-control" rows="2" required><?php echo htmlspecialchars($old['street_address'] ?? ''); ?></textarea>
+                            <textarea name="address_detail" id="address_detail" class="form-control" rows="2" required><?php echo htmlspecialchars($old['address_detail'] ?? ''); ?></textarea>
                         </div>
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <a href="index.php?page=login" class="btn btn-light me-md-2">Batal</a>
@@ -126,7 +126,30 @@
         province.addEventListener('change', function(){ var v=this.value; regency.disabled=true; district.disabled=true; village.disabled=true; clearOptions(regency); clearOptions(district); clearOptions(village); if(v){ loadRegencies(v);} });
         regency.addEventListener('change', function(){ var v=this.value; district.disabled=true; village.disabled=true; clearOptions(district); clearOptions(village); if(v){ loadDistricts(v);} });
         district.addEventListener('change', function(){ var v=this.value; village.disabled=true; clearOptions(village); postalCodeDisplay.textContent='-'; if(v){ loadVillages(v);} });
-        village.addEventListener('change', function(){ var v=this.value; postalCodeDisplay.textContent='-'; if(!v){ return; } fetch('index.php?page=address&action=get-postal-code&village_id='+encodeURIComponent(v)).then(r=>r.json()).then(res=>{ if(res.status==='success'){ postalCodeDisplay.textContent=res.data.postal_code || '-'; } }); });
+        village.addEventListener('change', function(){ 
+            var v=this.value; 
+            // Always clear postal code display first when village changes
+            postalCodeDisplay.textContent='-';
+            
+            if(!v){ 
+                return; 
+            }
+            
+            fetch('index.php?page=address&action=get-postal-code&village_id='+encodeURIComponent(v))
+                .then(r=>r.json())
+                .then(res=>{ 
+                    if(res.status==='success'){ 
+                        postalCodeDisplay.textContent=res.data.postal_code || '-'; 
+                    } else {
+                        // Keep display as '-' if no postal code found
+                        postalCodeDisplay.textContent='-';
+                    }
+                })
+                .catch(function() {
+                    // Keep display as '-' on error
+                    postalCodeDisplay.textContent='-';
+                });
+        });
     });
 })();
 </script>

@@ -306,7 +306,7 @@
       var regency = form.querySelector('#regency_id');
       var district = form.querySelector('#district_id');
       var village = form.querySelector('#village_id');
-      var street = form.querySelector('#street_address') || form.querySelector('[name="address_detail"]');
+      var street = form.querySelector('#address_detail') || form.querySelector('[name="street_address"]');
       var base = 1000;
       if (province) province.tabIndex = base + 1;
       if (regency) regency.tabIndex = base + 2;
@@ -320,7 +320,7 @@
     var district = form.querySelector('#district_id');
     var display = form.querySelector('#postalCodeDisplay');
     function focusStreet(){
-      var street = form.querySelector('#street_address') || form.querySelector('[name="address_detail"]');
+      var street = form.querySelector('#address_detail') || form.querySelector('[name="street_address"]');
       if (street && !street.readOnly) {
         try { street.focus(); } catch(e){}
       }
@@ -331,16 +331,47 @@
     }
     village.addEventListener('change', function(){
       var v = village.value;
+      // Always clear postal code display first when village changes
       display.textContent='-';
-      if (!v) return;
+      
+      if (!v) {
+        // If village is empty/null, keep postal code empty and focus on street
+        focusStreet();
+        return;
+      }
+      
       var opt = village.querySelector('option[value="'+v+'"]');
       var pc = opt ? opt.getAttribute('data-postal-code') : null;
-      if (pc) { display.textContent = pc; focusStreet(); return; }
+      
+      if (pc) { 
+        display.textContent = pc; 
+        focusStreet(); 
+        return; 
+      }
+      
+      // Fetch from API if no postal code in option data
       try {
         fetch('index.php?page=address&action=get-postal-code&village_id=' + encodeURIComponent(v))
           .then(function(r){ return r.json(); })
-          .then(function(res){ if (res && res.status === 'success') { display.textContent = res.data.postal_code || '-'; focusStreet(); } else { focusStreet(); } });
-      } catch(e){}
+          .then(function(res){ 
+            if (res && res.status === 'success') { 
+              display.textContent = res.data.postal_code || '-'; 
+            } else {
+              // Keep display as '-' if no postal code found
+              display.textContent = '-';
+            }
+            focusStreet(); 
+          })
+          .catch(function() {
+            // Keep display as '-' on error
+            display.textContent = '-';
+            focusStreet();
+          });
+      } catch(e){
+        // Keep display as '-' on exception
+        display.textContent = '-';
+        focusStreet();
+      }
     });
   }
 })(window, document);

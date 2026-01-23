@@ -60,7 +60,7 @@ class CompanyController extends Controller {
             'type' => $type
         ];
         
-        $this->render('companies/index_clean', $data);
+        $this->render('companies/index', $data);
     }
     
     /**
@@ -355,7 +355,12 @@ class CompanyController extends Controller {
     public function details($id) {
         $this->requireAuth();
         
-        $company = $this->companyModel->getById($id);
+        // Disable error reporting to prevent HTML output in JSON
+        error_reporting(0);
+        ini_set('display_errors', 0);
+        
+        // Use getCompanyWithAddress to get complete address data
+        $company = $this->companyModel->getCompanyWithAddress($id);
         
         if (!$company) {
             $this->json([
@@ -364,18 +369,25 @@ class CompanyController extends Controller {
             ], 404);
         }
         
-        // Get additional details
-        $companyWithBranches = $this->companyModel->getWithBranches($id);
-        $statistics = $this->companyModel->getStatistics($id);
-        
-        $this->json([
-            'status' => 'success',
-            'data' => [
-                'company' => $company,
-                'branches' => $companyWithBranches,
-                'statistics' => $statistics
-            ]
-        ]);
+        try {
+            // Get additional details
+            $companyWithBranches = $this->companyModel->getWithBranches($id);
+            $statistics = $this->companyModel->getStatistics($id);
+            
+            $this->json([
+                'status' => 'success',
+                'data' => [
+                    'company' => $company,
+                    'branches' => $companyWithBranches,
+                    'statistics' => $statistics
+                ]
+            ]);
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to load company details: ' . $e->getMessage()
+            ], 500);
+        }
     }
     
     /**
@@ -384,7 +396,12 @@ class CompanyController extends Controller {
     public function get($id) {
         $this->requireAuth();
         
-        $company = $this->companyModel->getById($id);
+        // Disable error reporting to prevent HTML output in JSON
+        error_reporting(0);
+        ini_set('display_errors', 0);
+        
+        // Use getCompanyWithAddress to get complete address data for edit form
+        $company = $this->companyModel->getCompanyWithAddress($id);
         
         if (!$company) {
             $this->json([

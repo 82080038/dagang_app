@@ -274,7 +274,8 @@ class AddressController extends Controller {
      * Get provinces (AJAX)
      */
     public function getProvinces() {
-        $this->requireAuth();
+        // Skip auth check for address data (public data)
+        $this->isAjaxRequest();
         
         try {
             $provinces = $this->addressModel->getProvinces();
@@ -295,7 +296,8 @@ class AddressController extends Controller {
      * Get regencies by province (AJAX)
      */
     public function getRegencies() {
-        $this->requireAuth();
+        // Skip auth check for address data (public data)
+        $this->isAjaxRequest();
         
         $provinceId = $_GET['province_id'] ?? null;
         
@@ -326,7 +328,8 @@ class AddressController extends Controller {
      * Get districts by regency (AJAX)
      */
     public function getDistricts() {
-        $this->requireAuth();
+        // Skip auth check for address data (public data)
+        $this->isAjaxRequest();
         
         $regencyId = $_GET['regency_id'] ?? null;
         
@@ -357,7 +360,8 @@ class AddressController extends Controller {
      * Get villages by district (AJAX)
      */
     public function getVillages() {
-        $this->requireAuth();
+        // Skip auth check for address data (public data)
+        $this->isAjaxRequest();
         
         $districtId = $_GET['district_id'] ?? null;
         
@@ -388,7 +392,8 @@ class AddressController extends Controller {
      * Get postal code by village ID (AJAX)
      */
     public function getPostalCode() {
-        $this->requireAuth();
+        // Skip auth check for postal code lookup (public data)
+        $this->isAjaxRequest();
         
         $villageId = $_GET['village_id'] ?? null;
         

@@ -16,18 +16,20 @@ Sistem alamat yang baru menggabungkan dropdown cascade dari database dengan inpu
 ### 2. **Address Fields**
 ```sql
 -- Companies Table
-address_detail TEXT          -- Alamat jalan manual (wajib)
 province_id INT             -- ID Provinsi (wajib)
 regency_id INT              -- ID Kabupaten/Kota (wajib)  
 district_id INT             -- ID Kecamatan (wajib)
 village_id INT              -- ID Desa/Kelurahan (wajib)
+address_detail TEXT          -- Alamat jalan manual (wajib)
+postal_code VARCHAR(10)     -- Kode Pos (opsional)
 
 -- Branches Table  
-address_detail TEXT          -- Alamat jalan manual (opsional)
 province_id INT             -- ID Provinsi (opsional)
 regency_id INT              -- ID Kabupaten/Kota (opsional)
 district_id INT             -- ID Kecamatan (opsional)
 village_id INT              -- ID Desa/Kelurahan (opsional)
+address_detail TEXT          -- Alamat jalan manual (opsional)
+postal_code VARCHAR(10)     -- Kode Pos (opsional)
 ```
 
 ### 3. **Form Structure**
@@ -38,11 +40,12 @@ village_id INT              -- ID Desa/Kelurahan (opsional)
 │   ├── Kabupaten/Kota *
 │   ├── Kecamatan *
 │   └── Desa/Kelurahan *
-└── Alamat Jalan (Manual)
-    └── 🏠 Alamat Jalan (Lengkap) *
-        - Jl. Nama Jalan No. 123
-        - RT 001/RW 002  
-        - Kode Pos 12345
+├── Alamat Jalan (Manual)
+│   └── 🏠 Alamat Jalan (Lengkap) *
+│       - Jl. Nama Jalan No. 123
+│       - RT 001/RW 002
+└── 📮 Kode Pos (Opsional)
+    - 12345
 ```
 
 ## 🔧 Implementation Details
@@ -98,11 +101,12 @@ Form sudah terintegrasi di:
 ### **3. Validation Rules**
 ```php
 // Required fields for companies:
-'address_detail' => 'required|min:5'
 'province_id' => 'required|integer'
 'regency_id' => 'required|integer' 
 'district_id' => 'required|integer'
 'village_id' => 'required|integer'
+'address_detail' => 'required|min:5'
+'postal_code' => 'nullable|max:10'
 ```
 
 ## 🎯 Usage Examples
@@ -176,16 +180,41 @@ public function create() {
                 <option value="">Pilih Provinsi</option>
             </select>
         </div>
-        <!-- ... other dropdowns ... -->
+        <div class="col-md-3">
+            <label for="regency_id" class="form-label">Kabupaten/Kota *</label>
+            <select class="form-select" id="regency_id" name="regency_id" required disabled>
+                <option value="">Pilih Kabupaten/Kota</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="district_id" class="form-label">Kecamatan *</label>
+            <select class="form-select" id="district_id" name="district_id" required disabled>
+                <option value="">Pilih Kecamatan</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label for="village_id" class="form-label">Desa/Kelurahan *</label>
+            <select class="form-select" id="village_id" name="village_id" required disabled>
+                <option value="">Pilih Desa/Kelurahan</option>
+            </select>
+        </div>
     </div>
     
     <!-- Street Address -->
     <div class="mb-3">
         <label for="address_detail" class="form-label">🏠 Alamat Jalan (Lengkap) *</label>
         <textarea class="form-control" id="address_detail" name="address_detail" rows="2" 
-                  placeholder="Contoh: Jl. Merdeka No. 123, RT 001/RW 002, Kode Pos 12345" 
+                  placeholder="Contoh: Jl. Merdeka No. 123, RT 001/RW 002" 
                   required></textarea>
-        <small class="text-muted">Masukkan alamat jalan lengkap termasuk nomor rumah, RT/RW, dan kode pos</small>
+        <small class="text-muted">Masukkan alamat jalan lengkap termasuk nomor rumah dan RT/RW</small>
+    </div>
+    
+    <!-- Postal Code -->
+    <div class="mb-3">
+        <label for="postal_code" class="form-label">📮 Kode Pos</label>
+        <input type="text" class="form-control" id="postal_code" name="postal_code" 
+               placeholder="Contoh: 12345" maxlength="10">
+        <small class="text-muted">Masukkan kode pos (opsional)</small>
     </div>
 </div>
 ```

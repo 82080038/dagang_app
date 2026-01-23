@@ -609,50 +609,79 @@ Priority: LOW - Industry Standard Gap: 55%
 CREATE DATABASE perdagangan_system;
 USE perdagangan_system;
 
--- 2. Tabel Perusahaan
+-- 2. Tabel Perusahaan (Updated dengan Address Fields)
 CREATE TABLE companies (
     id_company INT AUTO_INCREMENT PRIMARY KEY,
     company_name VARCHAR(200) NOT NULL,
     company_code VARCHAR(50) UNIQUE NOT NULL,
-    company_type ENUM('pusat','cabang','franchise','koperasi','individual') DEFAULT 'pusat',
+    company_type ENUM('individual','personal','warung','kios','toko_kelontong','minimarket','pengusaha_menengah','distributor','koperasi','perusahaan_besar','franchise','pusat') DEFAULT 'individual',
+    business_category ENUM('retail','wholesale','manufacturing','agriculture','services','cooperative','online','franchise','distributor','personal') DEFAULT 'retail',
+    scalability_level ENUM('1','2','3','4','5','6') DEFAULT '1',
     owner_name VARCHAR(200),
     phone VARCHAR(50),
     email VARCHAR(100),
-    address TEXT,
+    address TEXT, -- Legacy field (deprecated)
+    address_detail TEXT NULL COMMENT 'Alamat jalan lengkap (manual input)',
+    province_id INT NULL COMMENT 'Reference to alamat_db.provinces.id',
+    regency_id INT NULL COMMENT 'Reference to alamat_db.regencies.id',
+    district_id INT NULL COMMENT 'Reference to alamat_db.districts.id',
+    village_id INT NULL COMMENT 'Reference to alamat_db.villages.id',
+    postal_code VARCHAR(10) NULL COMMENT 'Kode pos',
+    address_id INT NULL COMMENT 'Reference to centralized addresses table',
     tax_id VARCHAR(50),
     business_license VARCHAR(100),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_company_code (company_code),
+    INDEX idx_company_type (company_type),
+    INDEX idx_business_category (business_category),
+    INDEX idx_scalability_level (scalability_level),
+    INDEX idx_address_id (address_id),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Tabel Cabang
+-- 3. Tabel Cabang (Updated dengan Address Fields)
 CREATE TABLE branches (
     id_branch INT AUTO_INCREMENT PRIMARY KEY,
     company_id INT NOT NULL,
     branch_name VARCHAR(200) NOT NULL,
     branch_code VARCHAR(50) NOT NULL,
-    branch_type ENUM('toko','warung','minimarket','gerai','kios','online') DEFAULT 'toko',
+    branch_type ENUM('personal','warung','kios','toko_kelontong','minimarket','pengusaha_menengah','distributor','koperasi','perusahaan_besar','franchise','pusat','cabang','online') DEFAULT 'personal',
+    business_segment ENUM('ultra_mikro','mikro','kecil_menengah','menengah','besar','enterprise') DEFAULT 'ultra_mikro',
     owner_name VARCHAR(200),
     phone VARCHAR(50),
     email VARCHAR(100),
     location_id INT,
+    address TEXT, -- Legacy field (deprecated)
+    address_detail TEXT NULL COMMENT 'Alamat jalan lengkap (manual input)',
+    province_id INT NULL COMMENT 'Reference to alamat_db.provinces.id',
+    regency_id INT NULL COMMENT 'Reference to alamat_db.regencies.id',
+    district_id INT NULL COMMENT 'Reference to alamat_db.districts.id',
+    village_id INT NULL COMMENT 'Reference to alamat_db.villages.id',
+    postal_code VARCHAR(10) NULL COMMENT 'Kode pos',
+    address_id INT NULL COMMENT 'Reference to centralized addresses table',
     operation_hours JSON,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (company_id) REFERENCES companies(id_company)
-);
+    FOREIGN KEY (company_id) REFERENCES companies(id_company) ON DELETE CASCADE,
+    UNIQUE KEY uk_company_branch (company_id, branch_code),
+    INDEX idx_branch_code (branch_code),
+    INDEX idx_branch_type (branch_type),
+    INDEX idx_address_id (address_id),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. Tabel Lokasi (Integrasi dengan alamat_db)
 CREATE TABLE branch_locations (
     id_location INT AUTO_INCREMENT PRIMARY KEY,
     branch_id INT NOT NULL,
-    address TEXT NOT NULL,
     province_id INT,
-    regency_id INT,
-    district_id INT,
-    village_id INT,
+    regency_id,
+    district_id,
+    village_id,
+    address TEXT NOT NULL,
     postal_code VARCHAR(10),
     latitude DECIMAL(10,8),
     longitude DECIMAL(11,8),
@@ -660,7 +689,45 @@ CREATE TABLE branch_locations (
     FOREIGN KEY (branch_id) REFERENCES branches(id_branch)
 );
 
--- 5. Tabel Anggota/Karyawan
+-- 5. Tabel Alamat Terpusat (Centralized Address Management)
+CREATE TABLE addresses (
+    id_address INT AUTO_INCREMENT PRIMARY KEY,
+    address_detail TEXT NOT NULL COMMENT 'Alamat jalan lengkap (manual input)',
+    province_id INT UNSIGNED NOT NULL COMMENT 'Reference to alamat_db.provinces.id',
+    regency_id INT UNSIGNED NOT NULL COMMENT 'Reference to alamat_db.regencies.id',
+    district_id INT UNSIGNED NOT NULL COMMENT 'Reference to alamat_db.districts.id',
+    village_id INT UNSIGNED NOT NULL COMMENT 'Reference to alamat_db.villages.id',
+    postal_code VARCHAR(10) NULL COMMENT 'Kode pos',
+    latitude DECIMAL(10,8) NULL COMMENT 'Koordinat latitude (optional)',
+    longitude DECIMAL(11,8) NULL COMMENT 'Koordinat longitude (optional)',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_province_id (province_id),
+    INDEX idx_regency_id (regency_id),
+    INDEX idx_district_id (district_id),
+    INDEX idx_village_id (village_id),
+    INDEX idx_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6. Tabel Entity Addresses (Link addresses to entities)
+CREATE TABLE entity_addresses (
+    id_entity_address INT AUTO_INCREMENT PRIMARY KEY,
+    entity_type ENUM('company', 'branch', 'member', 'supplier', 'customer') NOT NULL,
+    entity_id INT NOT NULL,
+    address_id INT NOT NULL,
+    usage_type ENUM('primary', 'billing', 'shipping', 'operational') DEFAULT 'primary',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (address_id) REFERENCES addresses(id_address) ON DELETE CASCADE,
+    UNIQUE KEY uk_entity_address (entity_type, entity_id, address_id, usage_type),
+    INDEX idx_entity (entity_type, entity_id),
+    INDEX idx_address_id (address_id),
+    INDEX idx_usage_type (usage_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7. Tabel Anggota/Karyawan
 CREATE TABLE members (
     id_member INT AUTO_INCREMENT PRIMARY KEY,
     branch_id INT NOT NULL,
@@ -678,7 +745,7 @@ CREATE TABLE members (
     FOREIGN KEY (branch_id) REFERENCES branches(id_branch)
 );
 
--- 6. Tabel Operasional Cabang
+-- 8. Tabel Operasional Cabang
 CREATE TABLE branch_operations (
     id_operation INT AUTO_INCREMENT PRIMARY KEY,
     branch_id INT NOT NULL,
@@ -691,7 +758,7 @@ CREATE TABLE branch_operations (
     FOREIGN KEY (branch_id) REFERENCES branches(id_branch)
 );
 
--- 7. Tabel Produk
+-- 9. Tabel Produk
 CREATE TABLE products (
     id_product INT AUTO_INCREMENT PRIMARY KEY,
     product_code VARCHAR(50) UNIQUE NOT NULL,
@@ -934,6 +1001,319 @@ public/
 │       ├── inventory.php
 │       └── financial.php
 ```
+
+## 🏠 **ADDRESS MANAGEMENT SYSTEM**
+
+### **🎯 Centralized Address Management**
+Sistem perdagangan menggunakan sistem alamat terpusat yang terintegrasi dengan database `alamat_db` untuk data wilayah Indonesia.
+
+#### **Key Features:**
+- **Centralized Storage**: Semua alamat disimpan di tabel `addresses` terpusat
+- **Indonesia Region Support**: Integrasi lengkap dengan `alamat_db.provinces`, `alamat_db.regencies`, `alamat_db.districts`, `alamat_db.villages`
+- **Entity Linking**: Satu alamat dapat digunakan oleh multiple entities (company, branch, member, supplier, customer)
+- **Cascade Dropdowns**: Provinsi → Kabupaten/Kota → Kecamatan → Kelurahan/Desa
+- **Auto Postal Code**: Kode pos otomatis terisi berdasarkan desa yang dipilih
+- **Multiple Usage Types**: Primary, billing, shipping, operational
+
+#### **Address Field Standardization:**
+```php
+// Standard field name across entire application
+'address_detail'     // Alamat jalan lengkap (manual input)
+'province_id'       // Reference ke alamat_db.provinces.id
+'regency_id'        // Reference ke alamat_db.regencies.id  
+'district_id'       // Reference ke alamat_db.districts.id
+'village_id'        // Reference ke alamat_db.villages.id
+'postal_code'       // Kode pos (auto-fill dari alamat_db)
+'address_id'        // Reference ke centralized addresses table
+```
+
+#### **Database Tables:**
+```sql
+-- Centralized addresses table
+CREATE TABLE addresses (
+    id_address INT AUTO_INCREMENT PRIMARY KEY,
+    address_detail TEXT NOT NULL COMMENT 'Alamat jalan lengkap (manual input)',
+    province_id INT UNSIGNED NOT NULL COMMENT 'Reference to alamat_db.provinces.id',
+    regency_id INT UNSIGNED NOT NULL COMMENT 'Reference to alamat_db.regencies.id', 
+    district_id INT UNSIGNED NOT NULL COMMENT 'Reference to alamat_db.districts.id',
+    village_id INT UNSIGNED NOT NULL COMMENT 'Reference to alamat_db.villages.id',
+    postal_code VARCHAR(10) NULL COMMENT 'Kode pos',
+    latitude DECIMAL(10,8) NULL COMMENT 'Koordinat latitude (optional)',
+    longitude DECIMAL(11,8) NULL COMMENT 'Koordinat longitude (optional)',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Entity addresses linking table
+CREATE TABLE entity_addresses (
+    id_entity_address INT AUTO_INCREMENT PRIMARY KEY,
+    entity_type ENUM('company', 'branch', 'member', 'supplier', 'customer') NOT NULL,
+    entity_id INT NOT NULL,
+    address_id INT NOT NULL,
+    usage_type ENUM('primary', 'billing', 'shipping', 'operational') DEFAULT 'primary',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (address_id) REFERENCES addresses(id_address) ON DELETE CASCADE
+);
+```
+
+### **🔧 Address Implementation Flow**
+
+#### **1. Form Address Input**
+```html
+<!-- Address form with cascade dropdowns -->
+<div class="row">
+    <div class="col-md-6">
+        <label for="province_id" class="form-label">Provinsi *</label>
+        <select class="form-select" id="province_id" name="province_id" required>
+            <option value="">Pilih Provinsi</option>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label for="regency_id" class="form-label">Kabupaten/Kota *</label>
+        <select class="form-select" id="regency_id" name="regency_id" required disabled>
+            <option value="">Pilih Kabupaten/Kota</option>
+        </select>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <label for="district_id" class="form-label">Kecamatan *</label>
+        <select class="form-select" id="district_id" name="district_id" required disabled>
+            <option value="">Pilih Kecamatan</option>
+        </select>
+    </div>
+    <div class="col-md-6">
+        <label for="village_id" class="form-label">Kelurahan/Desa *</label>
+        <select class="form-select" id="village_id" name="village_id" required disabled>
+            <option value="">Pilih Kelurahan/Desa</option>
+        </select>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12">
+        <label for="address_detail" class="form-label">Alamat Lengkap *</label>
+        <textarea class="form-control" id="address_detail" name="address_detail" rows="2" required 
+                  placeholder="Masukkan alamat lengkap (jalan, nomor rumah, RT/RW, dll)"></textarea>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <label for="postal_code" class="form-label">Kode Pos</label>
+        <input type="text" class="form-control" id="postal_code" name="postal_code" readonly>
+    </div>
+</div>
+```
+
+#### **2. JavaScript Cascade Logic**
+```javascript
+// Province change handler
+$("#province_id").on("change", function() {
+    var provinceId = $(this).val();
+    if (provinceId) {
+        loadRegencies(provinceId);
+        $("#regency_id").prop("disabled", false);
+        $("#district_id").prop("disabled", true).empty().append('<option value="">Pilih Kecamatan</option>');
+        $("#village_id").prop("disabled", true).empty().append('<option value="">Pilih Kelurahan/Desa</option>');
+        $("#postal_code").val(""); // Clear postal code when parent changes
+    }
+});
+
+// Village change handler (UPDATED: Always clear postal code first)
+$("#village_id").on("change", function() {
+    var selectedOption = $(this).find("option:selected");
+    var postalCode = selectedOption.data("postal-code");
+    var villageId = $(this).val();
+    
+    // Always clear postal code first when village changes
+    $("#postal_code").val("");
+    
+    if (villageId && postalCode) {
+        // Set postal code if available in option data
+        $("#postal_code").val(postalCode);
+    } else if (villageId) {
+        // Fetch from API if village is selected but no postal code in data
+        $.ajax({
+            url: "index.php?page=address&action=get-postal-code&village_id=" + villageId,
+            type: "GET",
+            dataType: "json",
+            success: function(response) {
+                if (response.status == "success" && response.data.postal_code) {
+                    $("#postal_code").val(response.data.postal_code);
+                }
+                // If no postal code found, keep field empty (already cleared above)
+            },
+            error: function() {
+                // Keep field empty on error (already cleared above)
+                console.log("Failed to fetch postal code for village: " + villageId);
+            }
+        });
+    }
+    // If villageId is empty/null, postal code remains empty (cleared above)
+});
+```
+
+#### **3. Backend Address Controller**
+```php
+class AddressController extends Controller {
+    private $addressModel;
+    
+    public function __construct() {
+        parent::__construct();
+        $this->addressModel = new Address();
+    }
+    
+    // Get provinces from alamat_db
+    public function getProvinces() {
+        $provinces = $this->addressModel->getProvinces();
+        $this->json([
+            'status' => 'success',
+            'data' => $provinces
+        ]);
+    }
+    
+    // Get regencies by province
+    public function getRegencies() {
+        $provinceId = $_GET['province_id'] ?? null;
+        if (!$provinceId) {
+            $this->json(['status' => 'error', 'message' => 'Province ID required']);
+            return;
+        }
+        
+        $regencies = $this->addressModel->getRegencies($provinceId);
+        $this->json([
+            'status' => 'success',
+            'data' => $regencies
+        ]);
+    }
+    
+    // Get postal code by village
+    public function getPostalCode() {
+        $villageId = $_GET['village_id'] ?? null;
+        if (!$villageId) {
+            $this->json(['status' => 'error', 'message' => 'Village ID required']);
+            return;
+        }
+        
+        $postalCode = $this->addressModel->getPostalCode($villageId);
+        $this->json([
+            'status' => 'success',
+            'data' => ['postal_code' => $postalCode]
+        ]);
+    }
+}
+```
+
+### **🔍 Address Validation & Processing**
+
+#### **Model Validation Rules**
+```php
+// Company model validation
+public function validateCompany($data) {
+    $rules = [
+        'company_name' => 'required|min:3|max:200',
+        'company_type' => 'required',
+        'scalability_level' => 'required|in:1,2,3,4,5,6',
+        'owner_name' => 'required|min:3|max:200',
+        'address_detail' => 'required|min:3|max:255',  // Standardized field name
+        'province_id' => 'required|numeric',
+        'regency_id' => 'required|numeric',
+        'district_id' => 'required|numeric',
+        'village_id' => 'required|numeric'
+    ];
+    
+    return $this->validate($data, $rules);
+}
+```
+
+#### **Address Creation Logic**
+```php
+// Create company with address
+public function createCompany($data) {
+    // Handle address creation if address data provided
+    if (isset($data['address_detail']) && !isset($data['address_id'])) {
+        $addressData = [
+            'address_detail' => $data['address_detail'],
+            'province_id' => $data['province_id'] ?? null,
+            'regency_id' => $data['regency_id'] ?? null,
+            'district_id' => $data['district_id'] ?? null,
+            'village_id' => $data['village_id'] ?? null,
+            'postal_code' => $data['postal_code'] ?? null
+        ];
+        
+        $addressModel = new Address();
+        $addressId = $addressModel->createAddress($addressData);
+        $data['address_id'] = $addressId;
+        
+        // Remove address fields from company data
+        unset($data['address_detail'], $data['province_id'], $data['regency_id'], 
+              $data['district_id'], $data['village_id'], $data['postal_code']);
+    }
+    
+    return $this->create($data);
+}
+```
+
+### **🚨 Critical Issues Fixed**
+
+#### **Field Name Inconsistency Resolution**
+**Problem:** Mixed usage of `street_address` vs `address_detail` across application
+**Solution:** Standardized to `address_detail` everywhere
+
+**Files Fixed:**
+- ✅ Database: `addresses.address_detail` (renamed from `street_address`)
+- ✅ Models: All references updated to `address_detail`
+- ✅ Controllers: Validation logic updated
+- ✅ Views: Form fields updated
+- ✅ JavaScript: Selectors updated
+- ✅ Maintenance: All test files updated
+
+#### **Migration Scripts:**
+```sql
+-- Fix address field names
+ALTER TABLE addresses 
+CHANGE COLUMN street_address address_detail TEXT NOT NULL COMMENT 'Alamat jalan lengkap (manual input)';
+
+-- Add address fields to main tables
+ALTER TABLE companies 
+ADD COLUMN IF NOT EXISTS address_detail TEXT NULL COMMENT 'Alamat jalan lengkap (manual input)',
+ADD COLUMN IF NOT EXISTS province_id INT NULL COMMENT 'Reference to alamat_db.provinces.id',
+ADD COLUMN IF NOT EXISTS regency_id INT NULL COMMENT 'Reference to alamat_db.regencies.id',
+ADD COLUMN IF NOT EXISTS district_id INT NULL COMMENT 'Reference to alamat_db.districts.id',
+ADD COLUMN IF NOT EXISTS village_id INT NULL COMMENT 'Reference to alamat_db.villages.id',
+ADD COLUMN IF NOT EXISTS postal_code VARCHAR(10) NULL COMMENT 'Kode pos',
+ADD COLUMN IF NOT EXISTS address_id INT NULL COMMENT 'Reference to centralized addresses table';
+```
+
+### **📋 Deployment Steps**
+
+#### **1. Database Migration**
+```bash
+# Run migrations in order
+mysql -u root -p perdagangan_system < database_migrations/fix_address_field_names.sql
+mysql -u root -p perdagangan_system < database_migrations/add_address_fields_to_main_tables.sql
+```
+
+#### **2. Application Testing**
+```bash
+# Test address functionality
+php maintenance/test_address_functionality.php
+
+# Fix maintenance file references
+php maintenance/fix_address_field_references.php
+```
+
+#### **3. Verification Checklist**
+- ✅ All address forms work correctly
+- ✅ Cascade dropdowns function properly
+- ✅ Postal code auto-fill works
+- ✅ Address data saves correctly
+- ✅ Edit/Update functionality works
+- ✅ Consistent field naming across application
+
+---
 
 ## 🔄 **ALUR IMPLEMENTASI**
 

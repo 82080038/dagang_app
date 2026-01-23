@@ -97,7 +97,7 @@ class AuthController extends Controller {
                 $password = $_POST['password'] ?? '';
                 $position = $_POST['position'] ?? 'owner';
                 $branchId = $_POST['branch_id'] ?? null;
-                $street = $_POST['street_address'] ?? '';
+                $street = $_POST['address_detail'] ?? '';
                 $provinceId = $_POST['province_id'] ?? '';
                 $regencyId = $_POST['regency_id'] ?? '';
                 $districtId = $_POST['district_id'] ?? '';
@@ -126,7 +126,7 @@ class AuthController extends Controller {
                     ]);
                     $addressModel = new Address();
                     $addressId = $addressModel->createAddress([
-                        'street_address' => $street,
+                        'address_detail' => $street,
                         'province_id' => $provinceId,
                         'regency_id' => $regencyId,
                         'district_id' => $districtId,

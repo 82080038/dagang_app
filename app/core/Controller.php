@@ -82,9 +82,35 @@ class Controller {
      * JSON Response
      */
     protected function json($data, $statusCode = 200) {
+        // Clear any previous output buffers
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+        
         header('Content-Type: application/json');
         http_response_code($statusCode);
-        echo json_encode($data);
+        
+        try {
+            $jsonOutput = json_encode($data, JSON_UNESCAPED_UNICODE);
+            if ($jsonOutput === false) {
+                // Handle JSON encoding error
+                $errorData = [
+                    'status' => 'error',
+                    'message' => 'JSON encoding error: ' . json_last_error_msg()
+                ];
+                echo json_encode($errorData, JSON_UNESCAPED_UNICODE);
+            } else {
+                echo $jsonOutput;
+            }
+        } catch (Exception $e) {
+            // Handle any exceptions during JSON output
+            $errorData = [
+                'status' => 'error',
+                'message' => 'Response error: ' . $e->getMessage()
+            ];
+            echo json_encode($errorData, JSON_UNESCAPED_UNICODE);
+        }
+        
         exit;
     }
     

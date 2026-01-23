@@ -235,7 +235,35 @@
         province.addEventListener('change', function(){ var v=this.value; regency.disabled=true; district.disabled=true; village.disabled=true; clearOptions(regency); clearOptions(district); clearOptions(village); if(v){ loadRegencies(v);} });
         regency.addEventListener('change', function(){ var v=this.value; district.disabled=true; village.disabled=true; clearOptions(district); clearOptions(village); if(v){ loadDistricts(v);} });
         district.addEventListener('change', function(){ var v=this.value; village.disabled=true; clearOptions(village); if(v){ loadVillages(v);} });
-        village.addEventListener('change', function(){ var v=this.value; var selectedOption=document.querySelector('#village_id option[value=\"'+v+'\"]'); var pc=selectedOption? selectedOption.getAttribute('data-postal-code') : null; var display=document.getElementById('postalCodeDisplay'); display.textContent='-'; if(pc){ display.textContent=pc; } else if(v){ fetch('index.php?page=address&action=get-postal-code&village_id='+encodeURIComponent(v)).then(r=>r.json()).then(res=>{ if(res.status==='success'){ display.textContent=res.data.postal_code || '-'; } }); } });
+        village.addEventListener('change', function(){ 
+            var v=this.value; 
+            var selectedOption=document.querySelector('#village_id option[value="'+v+'"]'); 
+            var pc=selectedOption? selectedOption.getAttribute('data-postal-code') : null; 
+            var display=document.getElementById('postalCodeDisplay'); 
+            
+            // Always clear postal code display first when village changes
+            display.textContent='-';
+            
+            if(pc){ 
+                display.textContent=pc; 
+            } else if(v){ 
+                fetch('index.php?page=address&action=get-postal-code&village_id='+encodeURIComponent(v))
+                    .then(r=>r.json())
+                    .then(res=>{ 
+                        if(res.status==='success'){ 
+                            display.textContent=res.data.postal_code || '-'; 
+                        } else {
+                            // Keep display as '-' if no postal code found
+                            display.textContent='-';
+                        }
+                    })
+                    .catch(function() {
+                        // Keep display as '-' on error
+                        display.textContent='-';
+                    });
+            }
+            // If village is empty/null, display remains '-' (cleared above)
+        });
         var companySelect=document.querySelector('select[name="company_id"]');
         companySelect.addEventListener('change', function(){ var cid=this.value; if(cid){ prefillFromCompany(cid);} });
     });
