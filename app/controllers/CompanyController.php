@@ -19,7 +19,7 @@ class CompanyController extends Controller {
      * Display companies list
      */
     public function index() {
-        $this->requireAuth();
+        $this->requireAppPermission(ROLE_APP_ADMIN);
         
         $page = $_GET['page_num'] ?? 1;
         $search = $_GET['q'] ?? '';
@@ -60,14 +60,14 @@ class CompanyController extends Controller {
             'type' => $type
         ];
         
-        $this->render('companies/index', $data);
+        $this->view->render('companies/index', $data);
     }
     
     /**
      * Create new company
      */
     public function create() {
-        $this->requireAuth();
+        $this->requireAppPermission(ROLE_APP_ADMIN);
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $data = $_POST;
@@ -123,7 +123,7 @@ class CompanyController extends Controller {
                 'scalability_levels' => $this->companyModel->getScalabilityLevelOptions()
             ];
             
-            $this->render('companies/create', $data);
+            $this->view->render('companies/create', $data);
         }
     }
     
@@ -131,7 +131,7 @@ class CompanyController extends Controller {
      * Edit company
      */
     public function edit($id) {
-        $this->requireAuth();
+        $this->requireAppPermission(ROLE_APP_ADMIN);
         
         $company = $this->companyModel->getById($id);
         
@@ -203,7 +203,7 @@ class CompanyController extends Controller {
                 'scalability_levels' => $this->companyModel->getScalabilityLevelOptions()
             ];
             
-            $this->render('companies/edit', $data);
+            $this->view->render('companies/edit', $data);
         }
     }
     
@@ -211,7 +211,7 @@ class CompanyController extends Controller {
      * Update company (AJAX)
      */
     public function update() {
-        $this->requireAuth();
+        $this->requireAppPermission(ROLE_APP_ADMIN);
         
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->json([
@@ -233,7 +233,7 @@ class CompanyController extends Controller {
         
         // Validate required fields
         $requiredFields = ['company_name', 'company_type', 'scalability_level', 'owner_name',
-            'street_address', 'province_id', 'regency_id', 'district_id', 'village_id'];
+            'address_detail', 'province_id', 'regency_id', 'district_id', 'village_id'];
         $data = [];
         $errors = [];
         
@@ -247,7 +247,7 @@ class CompanyController extends Controller {
         }
         
         // Optional fields
-        $optionalFields = ['company_code', 'business_category', 'email', 'phone', 'tax_id', 'business_license', 'address_id', 'postal_code'];
+        $optionalFields = ['company_code', 'business_category', 'email', 'phone', 'address_id', 'postal_code'];
         foreach ($optionalFields as $field) {
             $data[$field] = $_POST[$field] ?? null;
         }
@@ -292,7 +292,7 @@ class CompanyController extends Controller {
      * Delete company
      */
     public function delete($id) {
-        $this->requireAuth();
+        $this->requireAppPermission(ROLE_APP_ADMIN);
         
         $company = $this->companyModel->getById($id);
         
@@ -330,7 +330,7 @@ class CompanyController extends Controller {
      * Search companies
      */
     public function search() {
-        $this->requireAuth();
+        $this->requireAppPermission(ROLE_APP_ADMIN);
         
         $keyword = $_GET['q'] ?? '';
         
@@ -353,7 +353,7 @@ class CompanyController extends Controller {
      * Get company details (AJAX)
      */
     public function details($id) {
-        $this->requireAuth();
+        $this->requireAppPermission(ROLE_APP_ADMIN);
         
         // Disable error reporting to prevent HTML output in JSON
         error_reporting(0);
@@ -394,7 +394,7 @@ class CompanyController extends Controller {
      * Get company for edit form (AJAX)
      */
     public function get($id) {
-        $this->requireAuth();
+        $this->requireAppPermission(ROLE_APP_ADMIN);
         
         // Disable error reporting to prevent HTML output in JSON
         error_reporting(0);
@@ -422,7 +422,7 @@ class CompanyController extends Controller {
      * Toggle company status (activate/deactivate)
      */
     public function toggleStatus($id) {
-        $this->requireAuth();
+        $this->requireAppPermission(ROLE_APP_ADMIN);
         
         $company = $this->companyModel->getById($id);
         

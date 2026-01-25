@@ -27,6 +27,38 @@
     --modal-title-color: var(--text);
 }
 
+/* Text visibility for both light and dark modes */
+.text-dark-mode {
+    color: var(--text) !important;
+    font-weight: 500;
+}
+
+/* Ensure form labels are visible */
+.form-label {
+    color: var(--text) !important;
+    font-weight: 500;
+}
+
+/* Form control plaintext visibility */
+.form-control-plaintext {
+    color: var(--text) !important;
+}
+
+/* Form floating labels visibility */
+.form-floating label {
+    color: var(--text) !important;
+}
+
+/* Address display visibility */
+.address-display {
+    color: var(--text) !important;
+}
+
+/* Form check labels visibility */
+.form-check-label {
+    color: var(--text) !important;
+}
+
 :root[data-theme="light-orange"] {
     --primary-color: #fd7e14;
     --secondary-color: #6c757d;
@@ -1226,5 +1258,32 @@ footer {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
+    }
+}
+
+/* Company name truncation in table */
+.companies-table .company-name {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Responsive company name width */
+@media (max-width: 768px) {
+    .companies-table .company-name {
+        max-width: 150px;
+    }
+}
+
+@media (max-width: 576px) {
+    .companies-table .company-name {
+        max-width: 120px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .companies-table .company-name {
+        max-width: 250px;
     }
 }

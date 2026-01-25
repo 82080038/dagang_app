@@ -64,8 +64,7 @@
     updateOpenModalTitles();
   }
   
-  function currentTheme(){
-    try {
+  function currentTheme(){try{
       var saved = localStorage.getItem(STORAGE_KEY);
       if (saved && THEMES.indexOf(saved) > -1) return saved;
     } catch(e){}
@@ -93,8 +92,7 @@
           var primary = getComputedStyle(d.documentElement).getPropertyValue('--primary-color').trim();
           if (swatch && primary) {
             swatch.style.backgroundColor = primary;
-          }
-        } catch(e){}
+          }}catch(e){}
       };
       setLabel(currentTheme());
       items.forEach(function(el){
@@ -207,8 +205,7 @@
             ddEl.setAttribute('aria-expanded', 'false');
           }
         });
-      }
-    } catch(e){}
+      }}catch(e){}
     document.addEventListener('shown.bs.modal', function(e){
       adjustModalTitleContrast(e.target);
       setupAutoFormNav(e.target);
@@ -249,8 +246,7 @@
         }
         return null;
       }
-      function openSelect(sel){
-        try {
+      function openSelect(sel){try{
           sel.focus();
           var m = new MouseEvent('mousedown', {bubbles:true});
           sel.dispatchEvent(m);
@@ -260,8 +256,7 @@
         } catch(e){}
       }
       function goNext(current){
-        if (current && current.willValidate && !current.checkValidity()){
-          try { current.reportValidity(); } catch(e){}
+        if (current && current.willValidate && !current.checkValidity()){try{ current.reportValidity(); } catch(e){}
           return;
         }
         var n = nextEl(current);
@@ -300,8 +295,7 @@
       });
     });
   }
-  function ensureAddressTabOrder(form){
-    try {
+  function ensureAddressTabOrder(form){try{
       var province = form.querySelector('#province_id');
       var regency = form.querySelector('#regency_id');
       var district = form.querySelector('#district_id');
@@ -315,14 +309,14 @@
       if (street) street.tabIndex = base + 5;
     } catch(e){}
   }
+  
   function attachPostalCodeAuto(form){
     var village = form.querySelector('#village_id');
     var district = form.querySelector('#district_id');
     var display = form.querySelector('#postalCodeDisplay');
     function focusStreet(){
       var street = form.querySelector('#address_detail') || form.querySelector('[name="street_address"]');
-      if (street && !street.readOnly) {
-        try { street.focus(); } catch(e){}
+      if (street && !street.readOnly) {try{ street.focus(); } catch(e){}
       }
     }
     if (!village || !display) return;

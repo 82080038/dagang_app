@@ -23,8 +23,8 @@ $(document).ready(function() {
         $('.alert').fadeOut('slow');
     }, 5000);
     
-    // Confirm delete actions
-    $('.delete-btn').on('click', function(e) {
+    // Confirm delete actions (exclude module-specific delete buttons)
+    $('.delete-btn:not([id^="company-delete-btn-"]):not([id^="branch-delete-btn-"]):not([id^="product-delete-btn-"]):not([id^="staff-delete-btn-"])').on('click', function(e) {
         e.preventDefault();
         var url = $(this).attr('href');
         var title = $(this).data('title');

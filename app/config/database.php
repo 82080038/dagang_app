@@ -98,6 +98,26 @@ class Database {
         return $this->connection->rollback();
     }
     
+    public function insert($table, $data) {
+        try {
+            $columns = implode(', ', array_keys($data));
+            $placeholders = implode(', ', array_fill(0, count($data), '?'));
+            
+            $sql = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
+            $stmt = $this->connection->prepare($sql);
+            $stmt->execute(array_values($data));
+            
+            return $this->connection->lastInsertId();
+        } catch (PDOException $e) {
+            logMessage('ERROR', 'Insert failed: ' . $e->getMessage() . ' SQL: ' . $sql);
+            throw new Exception('Insert failed: ' . $e->getMessage());
+        }
+    }
+    
+    public function prepare($sql) {
+        return $this->connection->prepare($sql);
+    }
+    
     public function close() {
         $this->connection = null;
     }

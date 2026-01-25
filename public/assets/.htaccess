@@ -1,0 +1,36 @@
+# Assets Directory .htaccess
+# Ensures proper MIME types and caching for assets
+
+# Set proper MIME types
+<IfModule mod_mime.c>
+    AddType text/css .css
+    AddType application/javascript .js
+    AddType image/svg+xml .svg
+    AddType image/png .png
+    AddType image/jpeg .jpg .jpeg
+    AddType image/gif .gif
+    AddType font/woff .woff
+    AddType font/woff2 .woff2
+    AddType application/x-font-ttf .ttf
+    AddType application/x-font-otf .otf
+    AddType application/vnd.ms-fontobject .eot
+</IfModule>
+
+# Enable CORS and caching for assets
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg|woff|woff2|ttf|otf|eot)$">
+        Header set Access-Control-Allow-Origin "*"
+        Header set Cache-Control "public, max-age=31536000"
+        Header set Vary "Accept-Encoding"
+    </FilesMatch>
+</IfModule>
+
+# Compress assets
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# Prevent directory listing
+Options -Indexes

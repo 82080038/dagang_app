@@ -1,0 +1,29 @@
+# Prevent direct access to uploaded files
+# Only allow access through application controllers
+
+# Deny all requests
+Order deny,allow
+Deny from all
+
+# Or use Apache 2.4+ syntax
+# Require all denied
+
+# Prevent execution of scripts
+<FilesMatch "\.(php|phtml|php3|php4|php5|pl|py|cgi|sh|exe)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Allow specific file types for display (images, documents)
+<FilesMatch "\.(jpg|jpeg|png|gif|pdf|doc|docx|xls|xlsx)$">
+    # Comment this out if you want to serve files through PHP only
+    # Order allow,deny
+    # Allow from all
+</FilesMatch>
+
+# Set proper headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set X-XSS-Protection "1; mode=block"
+</IfModule>

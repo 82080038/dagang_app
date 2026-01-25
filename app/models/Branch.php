@@ -14,23 +14,20 @@ class Branch extends Model {
         'branch_name',
         'branch_code',
         'branch_type',
+        'business_segment',
+        'branch_operation_type',
         'owner_name',
         'phone',
         'email',
-        'location_id',
-        'address',
         'address_detail',
         'province_id',
         'regency_id',
         'district_id',
         'village_id',
-        'operation_hours',
+        'postal_code',
+        'latitude',
+        'longitude',
         'is_active',
-        'last_sync_at',
-        'sync_status',
-        'real_time_status',
-        'last_ping_at',
-        'auto_refresh_enabled',
         'created_at',
         'updated_at'
     ];
@@ -135,6 +132,25 @@ class Branch extends Model {
     }
     
     /**
+     * Get Branch with Address Details
+     */
+    public function getBranchWithAddress($branchId) {
+        $sql = "SELECT b.*, 
+                       p.name as province_name,
+                       r.name as regency_name,
+                       d.name as district_name,
+                       v.name as village_name
+                FROM {$this->table} b
+                LEFT JOIN alamat_db.provinces p ON b.province_id = p.id
+                LEFT JOIN alamat_db.regencies r ON b.regency_id = r.id
+                LEFT JOIN alamat_db.districts d ON b.district_id = d.id
+                LEFT JOIN alamat_db.villages v ON b.village_id = v.id
+                WHERE b.id_branch = :branch_id";
+        
+        return $this->queryOne($sql, ['branch_id' => $branchId]);
+    }
+    
+    /**
      * Get Branch with Inventory Summary
      */
     public function getWithInventorySummary() {
@@ -192,6 +208,7 @@ class Branch extends Model {
             'branch_name' => 'required|min:3|max:200',
             'branch_code' => 'required|min:2|max:50',
             'branch_type' => 'required',
+            'branch_operation_type' => 'required|in:solo,minimal,with_staff,full_staff',
             'owner_name' => 'required|min:3|max:200',
             'email' => 'email',
             'phone' => 'min:10|max:20',

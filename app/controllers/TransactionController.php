@@ -26,6 +26,7 @@ class TransactionController extends Controller {
      */
     public function index() {
         $this->requireAuth();
+        $this->requireFeature('transactions');
         
         // Default to first branch or user's assigned branch
         $branchId = $_GET['branch_id'] ?? null;

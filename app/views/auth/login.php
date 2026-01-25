@@ -87,6 +87,17 @@
             margin-right: 10px;
             color: #fff;
         }
+        
+        .register-link {
+            color: #667eea;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+        
+        .register-link:hover {
+            color: #764ba2;
+            text-decoration: underline !important;
+        }
     </style>
 <div class="container">
         <div class="login-container">
@@ -180,6 +191,12 @@
                         <p class="text-muted">
                             <i class="fas fa-info-circle me-1"></i>
                             Hubungi admin untuk mendapatkan akses login
+                        </p>
+                        <p class="mb-0">
+                            <span class="text-muted">Belum punya akun?</span>
+                            <a href="index.php?page=register" class="register-link">
+                                Daftar di sini
+                            </a>
                         </p>
                     </div>
                     

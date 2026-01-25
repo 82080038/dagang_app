@@ -69,7 +69,7 @@ class DashboardController extends Controller {
             'openBranches' => $openBranches
         ];
         
-        $this->render('dashboard/index', $data);
+        $this->view->render('dashboard/index', $data);
     }
     
     /**
@@ -313,7 +313,7 @@ class DashboardController extends Controller {
             'branches' => $branches
         ];
         
-        $this->render('dashboard/search', $data);
+        $this->view->render('dashboard/search', $data);
     }
     
     /**
@@ -337,7 +337,7 @@ class DashboardController extends Controller {
             'title' => 'Detail Perusahaan'
         ];
         
-        $this->render('dashboard/company_details', $data);
+        $this->view->render('dashboard/company_details', $data);
     }
     
     /**
@@ -366,7 +366,7 @@ class DashboardController extends Controller {
             'title' => 'Detail Cabang'
         ];
         
-        $this->render('dashboard/branch_details', $data);
+        $this->view->render('dashboard/branch_details', $data);
     }
     
     /**

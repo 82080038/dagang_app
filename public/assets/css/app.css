@@ -1,0 +1,184 @@
+/* Application Specific Styles */
+
+/* Main Content Area */
+.main-content {
+    margin-left: 250px;
+    padding: 20px;
+    transition: margin-left 0.3s ease;
+}
+
+.main-content.expanded {
+    margin-left: 0;
+}
+
+/* Card Styles */
+.app-card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.app-card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+/* Button Styles */
+.btn-app {
+    border-radius: 25px;
+    padding: 8px 20px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-app:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+/* Form Styles */
+.form-control-app {
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.form-control-app:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* Table Styles */
+.table-app {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.table-app thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.table-app tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Alert Styles */
+.alert-app {
+    border-radius: 10px;
+    border: none;
+}
+
+/* Modal Styles */
+.modal-app .modal-content {
+    border-radius: 15px;
+    border: none;
+}
+
+.modal-app .modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0;
+}
+
+/* Loading Spinner */
+.spinner-app {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .main-content {
+        margin-left: 0;
+        padding: 10px;
+    }
+    
+    .app-card {
+        margin-bottom: 15px;
+    }
+    
+    .btn-app {
+        padding: 6px 15px;
+        font-size: 14px;
+    }
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+    background: #1a1a1a;
+    color: #ffffff;
+}
+
+[data-theme="dark"] .app-card {
+    background: #2d2d2d;
+    color: #ffffff;
+}
+
+[data-theme="dark"] .form-control-app {
+    background: #2d2d2d;
+    border-color: #404040;
+    color: #ffffff;
+}
+
+[data-theme="dark"] .table-app {
+    background: #2d2d2d;
+    color: #ffffff;
+}
+
+/* Light Theme */
+[data-theme="light"] {
+    background: #ffffff;
+    color: #333333;
+}
+
+/* High Contrast Theme */
+[data-theme="high-contrast"] {
+    background: #000000;
+    color: #ffffff;
+}
+
+[data-theme="high-contrast"] .btn-app {
+    border: 2px solid #ffffff;
+}
+
+/* Pastel Theme */
+[data-theme="pastel"] {
+    background: #f5f5f5;
+    color: #333333;
+}
+
+[data-theme="pastel"] .app-card {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+}
+
+/* Custom Animations */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}

@@ -3,18 +3,18 @@
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
             <h1 class="h2 h3-md mb-3 mb-md-0"><i class="bi bi-speedometer2 me-2"></i>Dashboard</h1>
             <div class="d-flex flex-column flex-sm-row gap-2">
-                <button class="btn btn-outline-primary btn-sm flex-fill flex-sm-auto" id="refreshDashboardBtn" onclick="refreshDashboard()">
+                <button class="btn btn-outline-primary btn-sm flex-fill flex-sm-auto" id="dashboard-refresh-btn" onclick="refreshDashboard()">
                     <i class="bi bi-arrow-clockwise me-1"></i> <span class="d-none d-sm-inline">Refresh</span>
                 </button>
                 <div class="btn-group flex-fill flex-sm-auto">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" id="exportDropdownBtn">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" id="dashboard-export-dropdown-btn">
                         <i class="bi bi-download me-1"></i> <span class="d-none d-sm-inline">Export</span>
                     </button>
-                    <ul class="dropdown-menu" id="exportDropdownMenu">
-                        <li><a class="dropdown-item" href="<?= $this->url('/export?format=json') ?>" id="exportJsonBtn">
+                    <ul class="dropdown-menu" id="dashboard-export-dropdown-menu">
+                        <li><a class="dropdown-item" href="index.php?export=json" id="dashboard-export-json-btn">
                             <i class="bi bi-filetype-json me-2"></i>JSON
                         </a></li>
-                        <li><a class="dropdown-item" href="<?= $this->url('/export?format=csv') ?>" id="exportCsvBtn">
+                        <li><a class="dropdown-item" href="index.php?export=csv" id="dashboard-export-csv-btn">
                             <i class="bi bi-filetype-csv me-2"></i>CSV
                         </a></li>
                     </ul>
@@ -31,7 +31,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="flex-grow-1">
-                        <h4 class="card-title mb-1" id="totalCompanies"><?= $companyStats['total_companies'] ?></h4>
+                        <h4 class="card-title mb-1" id="dashboard-total-companies"><?= $companyStats['total_companies'] ?></h4>
                         <p class="card-text small mb-0">Total Perusahaan</p>
                     </div>
                     <div class="align-self-center">
@@ -47,7 +47,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="flex-grow-1">
-                        <h4 class="card-title mb-1" id="activeCompanies"><?= $companyStats['active_companies'] ?></h4>
+                        <h4 class="card-title mb-1" id="dashboard-active-companies"><?= $companyStats['active_companies'] ?></h4>
                         <p class="card-text">Perusahaan Aktif</p>
                     </div>
                     <div class="align-self-center">
@@ -294,8 +294,41 @@
 </div>
 
 <script>
-// Dashboard JavaScript with Bootstrap
-document.addEventListener('DOMContentLoaded', function() {
+// Dashboard JavaScript with proper dependency loading
+var dashboardInitAttempts = 0;
+var maxInitAttempts = 20; // 2 seconds maximum wait
+
+function initializeDashboard() {
+    dashboardInitAttempts++;
+    
+    // Timeout check to prevent infinite loop
+    if (dashboardInitAttempts > maxInitAttempts) {
+        console.error('Dashboard initialization timed out after ' + (maxInitAttempts * 100) + 'ms');
+        console.error('jQuery or Chart.js failed to load properly');
+        
+        // Show error to user
+        if (typeof alert !== 'undefined') {
+            alert('Dashboard loading failed. jQuery library could not be loaded. Please:\n1. Check your internet connection\n2. Disable ad blockers\n3. Refresh the page\n\nTechnical details: ' + (maxInitAttempts * 100) + 'ms timeout reached');
+        }
+        return;
+    }
+    
+    // Wait for jQuery to be available
+    if (typeof $ === 'undefined') {
+        console.log('Waiting for jQuery to load... (attempt ' + dashboardInitAttempts + '/' + maxInitAttempts + ')');
+        setTimeout(initializeDashboard, 100);
+        return;
+    }
+    
+    // Wait for Chart.js to be available
+    if (typeof Chart === 'undefined') {
+        console.log('Waiting for Chart.js to load... (attempt ' + dashboardInitAttempts + '/' + maxInitAttempts + ')');
+        setTimeout(initializeDashboard, 100);
+        return;
+    }
+    
+    console.log('All dependencies loaded, initializing dashboard...');
+    
     // Load scalability chart
     loadScalabilityChart();
     
@@ -310,14 +343,24 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
-});
+    
+    // Initialize Dashboard Module
+    DashboardModule.init();
+}
 
 function loadScalabilityChart() {
     fetch('<?= BASE_URL ?>/index.php?page=dashboard&action=api-scalability')
         .then(response => response.json())
         .then(data => {
-            const ctx = document.getElementById('scalabilityChart').getContext('2d');
-            new Chart(ctx, {
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not available');
+                return;
+            }
+            
+            const ctx = document.getElementById('scalabilityChart');
+            if (!ctx) return;
+            
+            new Chart(ctx.getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: data.data.labels,
@@ -347,6 +390,10 @@ function loadScalabilityChart() {
         })
         .catch(error => {
             console.error('Error loading scalability chart:', error);
+            // Show user-friendly error
+            if (typeof Modal !== 'undefined') {
+                Modal.error('Failed to load scalability chart. Please refresh the page.');
+            }
         });
 }
 
@@ -354,8 +401,15 @@ function loadSegmentChart() {
     fetch('<?= BASE_URL ?>/index.php?page=dashboard&action=api-segments')
         .then(response => response.json())
         .then(data => {
-            const ctx = document.getElementById('segmentChart').getContext('2d');
-            new Chart(ctx, {
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not available');
+                return;
+            }
+            
+            const ctx = document.getElementById('segmentChart');
+            if (!ctx) return;
+            
+            new Chart(ctx.getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: data.data.labels,
@@ -384,10 +438,221 @@ function loadSegmentChart() {
         })
         .catch(error => {
             console.error('Error loading segment chart:', error);
+            // Show user-friendly error
+            if (typeof Modal !== 'undefined') {
+                Modal.error('Failed to load segment chart. Please refresh the page.');
+            }
         });
 }
 
 function refreshDashboard() {
     location.reload();
 }
+
+// Dashboard Module
+var DashboardModule = {
+    init: function() {
+        // Check if jQuery is available
+        if (typeof $ === 'undefined') {
+            console.error('DashboardModule: jQuery is not loaded');
+            return;
+        }
+        
+        console.log('DashboardModule initializing...');
+        this.bindEvents();
+        this.initializeCharts();
+    },
+    
+    bindEvents: function() {
+        // Refresh button
+        $('#dashboard-refresh-btn').off('click').on('click', this.handleRefresh.bind(this));
+        
+        // Export buttons
+        $('#dashboard-export-json-btn').off('click').on('click', this.handleExport.bind(this, 'json'));
+        $('#dashboard-export-csv-btn').off('click').on('click', this.handleExport.bind(this, 'csv'));
+        
+        // Auto-refresh every 30 seconds
+        setInterval(this.autoRefresh.bind(this), 30000);
+    },
+    
+    initializeCharts: function() {
+        this.loadCharts();
+    },
+    
+    handleRefresh: function(e) {
+        e.preventDefault();
+        var btn = $(e.target);
+        var originalText = btn.html();
+        
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Refreshing...');
+        
+        this.loadCharts().then(function() {
+            DashboardModule.showNotification('Dashboard refreshed successfully', 'success');
+        }).catch(function(error) {
+            DashboardModule.showNotification('Failed to refresh dashboard', 'error');
+        }).finally(function() {
+            btn.prop('disabled', false).html(originalText);
+        });
+    },
+    
+    handleExport: function(format, e) {
+        e.preventDefault();
+        
+        var url = 'index.php?export=' + format;
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = 'dashboard.' + format;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        this.showNotification('Dashboard exported as ' + format.toUpperCase(), 'success');
+    },
+    
+    loadCharts: function() {
+        return Promise.all([
+            this.loadStats(),
+            this.loadScalabilityChart(),
+            this.loadSegmentChart(),
+            this.loadOpenBranchesChart(),
+            this.loadLowStockChart()
+        ]);
+    },
+    
+    loadStats: function() {
+        return fetch('index.php?page=dashboard&action=api-stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    $('#dashboard-total-companies').text(data.data.total_companies);
+                    $('#dashboard-active-companies').text(data.data.active_companies);
+                    // Update other stats
+                }
+            });
+    },
+    
+    loadScalabilityChart: function() {
+        return fetch('index.php?page=dashboard&action=api-scalability')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update scalability chart
+                    this.updateChart('scalabilityChart', data.data);
+                }
+            });
+    },
+    
+    loadSegmentChart: function() {
+        return fetch('index.php?page=dashboard&action=api-segments')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (typeof Chart === 'undefined') {
+                        console.error('Chart.js is not available for segment chart');
+                        return;
+                    }
+                    
+                    const ctx = document.getElementById('segmentChart');
+                    if (ctx) {
+                        new Chart(ctx.getContext('2d'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: data.data.labels,
+                                datasets: [{
+                                    data: data.data.data,
+                                    backgroundColor: [
+                                        '#FF6384', '#36A2EB', '#FFCE56', 
+                                        '#4BC0C0', '#9966FF', '#FF9F40'
+                                    ]
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { position: 'bottom' }
+                                }
+                            }
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading segment chart:', error);
+                if (typeof Modal !== 'undefined') {
+                    Modal.error('Failed to load segment chart. Please refresh the page.');
+                }
+            });
+    },
+    
+    loadOpenBranchesChart: function() {
+        return fetch('index.php?page=dashboard&action=api-open-branches')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    this.updateChart('openBranchesChart', data.data);
+                }
+            });
+    },
+    
+    loadLowStockChart: function() {
+        return fetch('index.php?page=dashboard&action=api-low-stock')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    this.updateChart('lowStockChart', data.data);
+                }
+            });
+    },
+    
+    updateChart: function(chartId, data) {
+        var ctx = document.getElementById(chartId);
+        if (ctx) {
+            // Update existing chart or create new one
+            // Implementation depends on chart library being used
+        }
+    },
+    
+    autoRefresh: function() {
+        // Only refresh if page is visible
+        if (!document.hidden) {
+            this.loadStats().catch(function(error) {
+                console.log('Auto-refresh failed:', error);
+            });
+        }
+    },
+    
+    showNotification: function(message, type) {
+        // Use Toast system if available, otherwise fallback to alert
+        if (typeof Toast !== 'undefined') {
+            Toast.success(message);
+        } else {
+            // Fallback toast implementation
+            var toastHtml = '<div class="toast align-items-center text-white bg-' + (type === 'success' ? 'success' : 'danger') + ' border-0" role="alert">' +
+                '<div class="d-flex">' +
+                '<div class="toast-body">' + message + '</div>' +
+                '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>' +
+                '</div>' +
+                '</div>';
+            
+            var toastContainer = $('#globalToastContainer');
+            if (toastContainer.length === 0) {
+                toastContainer = $('<div id="globalToastContainer" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+                $('body').append(toastContainer);
+            }
+            
+            var toastElement = $(toastHtml);
+            toastContainer.append(toastElement);
+            
+            var toast = new bootstrap.Toast(toastElement[0]);
+            toast.show();
+        }
+    }
+};
+
+// Start initialization when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, starting dashboard initialization...');
+    initializeDashboard();
+});
 </script>

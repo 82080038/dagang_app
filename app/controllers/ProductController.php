@@ -23,6 +23,7 @@ class ProductController extends Controller {
      */
     public function index() {
         $this->requireAuth();
+        $this->requireFeature('products');
         
         $page = $_GET['page_num'] ?? 1;
         $search = $_GET['q'] ?? '';
@@ -61,7 +62,7 @@ class ProductController extends Controller {
             'categories' => $categories
         ];
         
-        $this->render('products/index', $data);
+        $this->view->render('products/index', $data);
     }
     
     /**
@@ -120,7 +121,7 @@ class ProductController extends Controller {
             'generated_code' => $this->productModel->generateCode()
         ];
         
-        $this->render('products/create', $data);
+        $this->view->render('products/create', $data);
     }
 
     /**
@@ -137,7 +138,7 @@ class ProductController extends Controller {
         
         $product = $this->productModel->getById($id);
         if (!$product) {
-            $this->flash->set('error', 'Produk tidak ditemukan');
+            $_SESSION['flash'] ?? []->set('error', 'Produk tidak ditemukan');
             $this->redirect('index.php?page=products');
             return;
         }
@@ -180,7 +181,7 @@ class ProductController extends Controller {
             'categories' => $categories
         ];
         
-        $this->render('products/edit', $data);
+        $this->view->render('products/edit', $data);
     }
     
     /**

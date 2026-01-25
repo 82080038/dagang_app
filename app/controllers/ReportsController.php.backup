@@ -1,0 +1,876 @@
+<?php
+require_once __DIR__ . '/../core/Controller.php';
+require_once __DIR__ . '/../config/database.php';
+
+class ReportsController extends Controller {
+    private $pdo;
+    
+    public function __construct()
+    {
+        parent::__construct();
+        $this->pdo = new PDO('mysql:host=localhost;dbname=perdagangan_system', 'root', '');
+        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    }
+
+    public function index() {
+        $this->requireAuth();
+        $this->requirePermission(ROLE_MANAGER);
+        $this->requireFeature('reports');
+        
+        $data = [
+            'title' => 'Laporan',
+            'companies' => $this->getAllCompanies(),
+            'branches' => $this->getAllBranches(),
+            'user_role' => $this->getUserRole()
+        ];
+        
+        $this->render('reports/index', $data);
+    }
+    
+    /**
+     * Get all companies for report filters
+     */
+    private function getAllCompanies() {
+        try {
+            $stmt = $this->pdo->query("SELECT id_company, company_name FROM companies WHERE is_active = 1 ORDER BY company_name");
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+    
+    /**
+     * Get all branches for report filters
+     */
+    private function getAllBranches() {
+        try {
+            $stmt = $this->pdo->query("SELECT id_branch, branch_name FROM branches WHERE is_active = 1 ORDER BY branch_name");
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+    
+    /**
+     * Generate sales report
+     */
+    public function salesReport() {
+        $this->requireAuthJson();
+        
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
+        $endDate = $_GET['end_date'] ?? date('Y-m-t');
+        $companyId = $_GET['company_id'] ?? null;
+        $branchId = $_GET['branch_id'] ?? null;
+        
+        try {
+            $sql = "SELECT 
+                        DATE(t.created_at) as date,
+                        COUNT(*) as transaction_count,
+                        COALESCE(SUM(t.total_amount), 0) as total_sales,
+                        COALESCE(AVG(t.total_amount), 0) as avg_transaction,
+                        COUNT(DISTINCT t.customer_id) as unique_customers
+                    FROM transactions t
+                    WHERE DATE(t.created_at) BETWEEN :start_date AND :end_date";
+            
+            $params = [
+                ':start_date' => $startDate,
+                ':end_date' => $endDate
+            ];
+            
+            if ($companyId) {
+                $sql .= " AND t.company_id = :company_id";
+                $params[':company_id'] = $companyId;
+            }
+            
+            if ($branchId) {
+                $sql .= " AND t.branch_id = :branch_id";
+                $params[':branch_id'] = $branchId;
+            }
+            
+            $sql .= " GROUP BY DATE(t.created_at) ORDER BY DATE(t.created_at)";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Calculate totals
+            $totals = [
+                'total_transactions' => array_sum(array_column($data, 'transaction_count')),
+                'total_sales' => array_sum(array_column($data, 'total_sales')),
+                'avg_transaction' => array_sum(array_column($data, 'avg_transaction')) / count($data),
+                'total_customers' => array_sum(array_column($data, 'unique_customers'))
+            ];
+            
+            $this->json([
+                'status' => 'success',
+                'data' => $data,
+                'totals' => $totals,
+                'period' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ]
+            ]);
+            
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to generate sales report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Generate product performance report
+     */
+    public function productPerformanceReport() {
+        $this->requireAuthJson();
+        
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
+        $endDate = $_GET['end_date'] ?? date('Y-m-t');
+        $companyId = $_GET['company_id'] ?? null;
+        $branchId = $_GET['branch_id'] ?? null;
+        
+        try {
+            $sql = "SELECT 
+                        p.product_name,
+                        p.product_code,
+                        COUNT(ti.id_item) as total_sold,
+                        COALESCE(SUM(ti.quantity), 0) as total_quantity,
+                        COALESCE(SUM(ti.subtotal), 0) as total_revenue,
+                        COALESCE(AVG(ti.price), 0) as avg_price,
+                        COUNT(DISTINCT ti.transaction_id) as transaction_count
+                    FROM transaction_items ti
+                    JOIN products p ON ti.product_id = p.id_product
+                    JOIN transactions t ON ti.transaction_id = t.id_transaction
+                    WHERE DATE(t.created_at) BETWEEN :start_date AND :end_date";
+            
+            $params = [
+                ':start_date' => $startDate,
+                ':end_date' => $endDate
+            ];
+            
+            if ($companyId) {
+                $sql .= " AND t.company_id = :company_id";
+                $params[':company_id'] = $companyId;
+            }
+            
+            if ($branchId) {
+                $sql .= " AND t.branch_id = :branch_id";
+                $params[':branch_id'] = $branchId;
+            }
+            
+            $sql .= " GROUP BY p.id_product ORDER BY total_revenue DESC";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->json([
+                'status' => 'success',
+                'data' => $data,
+                'period' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ]
+            ]);
+            
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to generate product performance report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Generate inventory report
+     */
+    public function inventoryReport() {
+        $this->requireAuthJson();
+        
+        $companyId = $_GET['company_id'] ?? null;
+        $branchId = $_GET['branch_id'] ?? null;
+        $lowStockThreshold = $_GET['low_stock_threshold'] ?? 10;
+        
+        try {
+            $sql = "SELECT 
+                        p.product_name,
+                        p.product_code,
+                        c.category_name,
+                        COALESCE(SUM(bi.stock_quantity), 0) as total_stock,
+                        COALESCE(SUM(bi.min_stock), 0) as total_min_stock,
+                        CASE 
+                            WHEN COALESCE(SUM(bi.stock_quantity), 0) <= :low_stock THEN 'Low Stock'
+                            WHEN COALESCE(SUM(bi.stock_quantity), 0) <= COALESCE(SUM(bi.min_stock), 0) * 2 THEN 'Medium Stock'
+                            ELSE 'Good Stock'
+                        END as stock_status
+                    FROM products p
+                    LEFT JOIN categories c ON p.category_id = c.id_category
+                    LEFT JOIN branch_inventory bi ON p.id_product = bi.product_id
+                    WHERE 1=1";
+            
+            $params = [':low_stock' => $lowStockThreshold];
+            
+            if ($companyId) {
+                $sql .= " AND (bi.company_id = :company_id OR bi.company_id IS NULL)";
+                $params[':company_id'] = $companyId;
+            }
+            
+            if ($branchId) {
+                $sql .= " AND (bi.branch_id = :branch_id OR bi.branch_id IS NULL)";
+                $params[':branch_id'] = $branchId;
+            }
+            
+            $sql .= " GROUP BY p.id_product ORDER BY total_stock ASC";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Summary statistics
+            $summary = [
+                'total_products' => count($data),
+                'low_stock_count' => count(array_filter($data, fn($item) => $item['stock_status'] === 'Low Stock')),
+                'medium_stock_count' => count(array_filter($data, fn($item) => $item['stock_status'] === 'Medium Stock')),
+                'good_stock_count' => count(array_filter($data, fn($item) => $item['stock_status'] === 'Good Stock')),
+                'total_inventory_value' => array_sum(array_column($data, 'total_stock'))
+            ];
+            
+            $this->json([
+                'status' => 'success',
+                'data' => $data,
+                'summary' => $summary
+            ]);
+            
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to generate inventory report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Generate customer analysis report
+     */
+    public function customerAnalysisReport() {
+        $this->requireAuthJson();
+        
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
+        $endDate = $_GET['end_date'] ?? date('Y-m-t');
+        $companyId = $_GET['company_id'] ?? null;
+        $branchId = $_GET['branch_id'] ?? null;
+        
+        try {
+            $sql = "SELECT 
+                        c.customer_name,
+                        c.customer_code,
+                        COUNT(t.id_transaction) as transaction_count,
+                        COALESCE(SUM(t.total_amount), 0) as total_spent,
+                        COALESCE(AVG(t.total_amount), 0) as avg_transaction,
+                        MAX(t.created_at) as last_transaction,
+                        CASE 
+                            WHEN COUNT(t.id_transaction) >= 10 THEN 'VIP'
+                            WHEN COUNT(t.id_transaction) >= 5 THEN 'Regular'
+                            ELSE 'Occasional'
+                        END as customer_type
+                    FROM customers c
+                    LEFT JOIN transactions t ON c.id_customer = t.customer_id
+                        AND DATE(t.created_at) BETWEEN :start_date AND :end_date";
+            
+            $params = [
+                ':start_date' => $startDate,
+                ':end_date' => $endDate
+            ];
+            
+            if ($companyId) {
+                $sql .= " AND (t.company_id = :company_id OR t.company_id IS NULL)";
+                $params[':company_id'] = $companyId;
+            }
+            
+            if ($branchId) {
+                $sql .= " AND (t.branch_id = :branch_id OR t.branch_id IS NULL)";
+                $params[':branch_id'] = $branchId;
+            }
+            
+            $sql .= " GROUP BY c.id_customer ORDER BY total_spent DESC";
+            
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute($params);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Customer segmentation
+            $segmentation = [
+                'vip_customers' => count(array_filter($data, fn($item) => $item['customer_type'] === 'VIP')),
+                'regular_customers' => count(array_filter($data, fn($item) => $item['customer_type'] === 'Regular')),
+                'occasional_customers' => count(array_filter($data, fn($item) => $item['customer_type'] === 'Occasional')),
+                'total_revenue' => array_sum(array_column($data, 'total_spent'))
+            ];
+            
+            $this->json([
+                'status' => 'success',
+                'data' => $data,
+                'segmentation' => $segmentation,
+                'period' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ]
+            ]);
+            
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to generate customer analysis report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Export report to CSV
+     */
+    public function exportReport() {
+        $this->requireAuth();
+        
+        $reportType = $_GET['report_type'] ?? 'sales';
+        $format = $_GET['format'] ?? 'csv';
+        
+        try {
+            $filename = $reportType . '_report_' . date('Y-m-d_H-i-s') . '.' . $format;
+            
+            header('Content-Type: text/csv');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            
+            $output = fopen('php://output', 'w');
+            
+            // Add BOM for UTF-8
+            fwrite($output, "\xEF\xBB\xBF");
+            
+            switch ($reportType) {
+                case 'sales':
+                    $this->exportSalesReport($output);
+                    break;
+                case 'products':
+                    $this->exportProductReport($output);
+                    break;
+                case 'inventory':
+                    $this->exportInventoryReport($output);
+                    break;
+                case 'customers':
+                    $this->exportCustomerReport($output);
+                    break;
+                default:
+                    throw new Exception('Invalid report type');
+            }
+            
+            fclose($output);
+            exit;
+            
+        } catch (Exception $e) {
+            echo 'Error exporting report: ' . $e->getMessage();
+        }
+    }
+    
+    private function exportSalesReport($output) {
+        // CSV headers
+        fputcsv($output, ['Date', 'Transaction Count', 'Total Sales', 'Average Transaction', 'Unique Customers']);
+        
+        // Get data
+        $stmt = $this->pdo->query("
+            SELECT 
+                DATE(created_at) as date,
+                COUNT(*) as transaction_count,
+                COALESCE(SUM(total_amount), 0) as total_sales,
+                COALESCE(AVG(total_amount), 0) as avg_transaction,
+                COUNT(DISTINCT customer_id) as unique_customers
+            FROM transactions 
+            WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY DATE(created_at)
+        ");
+        
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            fputcsv($output, [
+                $row['date'],
+                $row['transaction_count'],
+                number_format($row['total_sales'], 2),
+                number_format($row['avg_transaction'], 2),
+                $row['unique_customers']
+            ]);
+        }
+    }
+    
+    /**
+     * Legacy API method - kept for compatibility
+     */
+    public function api() {
+        $this->requireAuthJson();
+        try {
+            $today = $this->pdo->query("SELECT COALESCE(SUM(total_amount),0) as total, COUNT(*) as count FROM transactions WHERE DATE(created_at)=CURDATE()")->fetch(PDO::FETCH_ASSOC);
+            $last7 = $this->pdo->query("SELECT DATE(created_at) as d, COALESCE(SUM(total_amount),0) as total, COUNT(*) as count FROM transactions WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY) GROUP BY DATE(created_at) ORDER BY DATE(created_at)")->fetchAll(PDO::FETCH_ASSOC);
+            
+            $this->json([
+                'status' => 'success',
+                'data' => [
+                    'today' => $today,
+                    'last7days' => $last7
+                ]
+            ]);
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+}
+
+    /**
+     * Generate comprehensive sales report
+     */
+    public function salesReport()
+    {
+        $this->requireAuthJson();
+        
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
+        $endDate = $_GET['end_date'] ?? date('Y-m-d');
+        $companyId = $_GET['company_id'] ?? null;
+        $branchId = $_GET['branch_id'] ?? null;
+        $reportType = $_GET['report_type'] ?? 'summary';
+
+        try {
+            $reportData = $this->generateSalesReportData($startDate, $endDate, $companyId, $branchId, $reportType);
+
+            $this->json([
+                'status' => 'success',
+                'data' => $reportData,
+                'meta' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'report_type' => $reportType,
+                    'generated_at' => date('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to generate sales report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate inventory report
+     */
+    public function inventoryReport()
+    {
+        $this->requireAuthJson();
+        
+        $branchId = $_GET['branch_id'] ?? null;
+        $categoryId = $_GET['category_id'] ?? null;
+        $reportType = $_GET['report_type'] ?? 'stock_levels';
+
+        try {
+            $reportData = $this->generateInventoryReportData($branchId, $categoryId, $reportType);
+
+            $this->json([
+                'status' => 'success',
+                'data' => $reportData,
+                'meta' => [
+                    'branch_id' => $branchId,
+                    'category_id' => $categoryId,
+                    'report_type' => $reportType,
+                    'generated_at' => date('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to generate inventory report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate financial report (basic version)
+     */
+    public function financialReport()
+    {
+        $this->requireAuthJson();
+        $this->requirePermission(ROLE_ADMIN); // Only admins can access financial reports
+        
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
+        $endDate = $_GET['end_date'] ?? date('Y-m-d');
+        $reportType = $_GET['report_type'] ?? 'profit_loss';
+
+        try {
+            $reportData = $this->generateFinancialReportData($startDate, $endDate, $reportType);
+
+            $this->json([
+                'status' => 'success',
+                'data' => $reportData,
+                'meta' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'report_type' => $reportType,
+                    'generated_at' => date('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to generate financial report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate customer report
+     */
+    public function customerReport()
+    {
+        $this->requireAuthJson();
+        
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
+        $endDate = $_GET['end_date'] ?? date('Y-m-d');
+        $reportType = $_GET['report_type'] ?? 'purchase_history';
+
+        try {
+            $reportData = $this->generateCustomerReportData($startDate, $endDate, $reportType);
+
+            $this->json([
+                'status' => 'success',
+                'data' => $reportData,
+                'meta' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'report_type' => $reportType,
+                    'generated_at' => date('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to generate customer report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate branch performance report
+     */
+    public function branchPerformanceReport()
+    {
+        $this->requireAuthJson();
+        $this->requirePermission(ROLE_ADMIN);
+        
+        $startDate = $_GET['start_date'] ?? date('Y-m-01');
+        $endDate = $_GET['end_date'] ?? date('Y-m-d');
+        $companyId = $_GET['company_id'] ?? null;
+        $reportType = $_GET['report_type'] ?? 'comparison';
+
+        try {
+            $reportData = $this->generateBranchPerformanceData($startDate, $endDate, $companyId, $reportType);
+
+            $this->json([
+                'status' => 'success',
+                'data' => $reportData,
+                'meta' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'company_id' => $companyId,
+                    'report_type' => $reportType,
+                    'generated_at' => date('Y-m-d H:i:s')
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Failed to generate branch performance report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Export report to PDF/Excel/CSV
+     */
+    public function exportReport()
+    {
+        $this->requireAuth();
+        $this->requirePermission(ROLE_MANAGER);
+        
+        $reportType = $_POST['report_type'] ?? 'sales';
+        $format = $_POST['format'] ?? 'pdf';
+        $filters = $_POST['filters'] ?? [];
+
+        try {
+            $result = $this->exportReportData($reportType, $format, $filters);
+            
+            if ($result['success']) {
+                // Download file
+                $filepath = $result['filepath'];
+                $filename = basename($filepath);
+                
+                header('Content-Type: application/octet-stream');
+                header('Content-Disposition: attachment; filename="' . $filename . '"');
+                header('Content-Length: ' . filesize($filepath));
+                readfile($filepath);
+                exit;
+            } else {
+                $_SESSION['error'] = 'Failed to export report: ' . $result['error'];
+                header('Location: /dagang/index.php?page=reports');
+                exit;
+            }
+
+        } catch (Exception $e) {
+            $_SESSION['error'] = 'Export failed: ' . $e->getMessage();
+            header('Location: /dagang/index.php?page=reports');
+            exit;
+        }
+    }
+
+    // Private helper methods
+
+    private function generateSalesReportData($startDate, $endDate, $companyId, $branchId, $reportType)
+    {
+        // Build base query
+        $whereClause = "WHERE t.created_at BETWEEN :start_date AND :end_date";
+        $params = ['start_date' => $startDate, 'end_date' => $endDate];
+        
+        if ($companyId) {
+            $whereClause .= " AND c.id_company = :company_id";
+            $params['company_id'] = $companyId;
+        }
+        
+        if ($branchId) {
+            $whereClause .= " AND b.id_branch = :branch_id";
+            $params['branch_id'] = $branchId;
+        }
+
+        switch ($reportType) {
+            case 'summary':
+                $sql = "SELECT 
+                    COUNT(*) as total_transactions,
+                    COALESCE(SUM(t.total_amount), 0) as total_revenue,
+                    COALESCE(AVG(t.total_amount), 0) as avg_transaction_value,
+                    COUNT(DISTINCT DATE(t.created_at)) as active_days
+                    FROM transactions t
+                    LEFT JOIN branches b ON t.branch_id = b.id_branch
+                    LEFT JOIN companies c ON b.company_id = c.id_company
+                    $whereClause";
+                break;
+                
+            case 'daily':
+                $sql = "SELECT 
+                    DATE(t.created_at) as date,
+                    COUNT(*) as transactions,
+                    COALESCE(SUM(t.total_amount), 0) as revenue
+                    FROM transactions t
+                    LEFT JOIN branches b ON t.branch_id = b.id_branch
+                    LEFT JOIN companies c ON b.company_id = c.id_company
+                    $whereClause
+                    GROUP BY DATE(t.created_at)
+                    ORDER BY DATE(t.created_at)";
+                break;
+                
+            case 'by_branch':
+                $sql = "SELECT 
+                    b.branch_name,
+                    COUNT(*) as transactions,
+                    COALESCE(SUM(t.total_amount), 0) as revenue
+                    FROM transactions t
+                    LEFT JOIN branches b ON t.branch_id = b.id_branch
+                    LEFT JOIN companies c ON b.company_id = c.id_company
+                    $whereClause
+                    GROUP BY b.id_branch, b.branch_name
+                    ORDER BY revenue DESC";
+                break;
+                
+            default:
+                throw new Exception("Invalid report type: $reportType");
+        }
+
+        return dbFetchAll($sql, $params);
+    }
+
+    private function generateInventoryReportData($branchId, $categoryId, $reportType)
+    {
+        $whereClause = "WHERE 1=1";
+        $params = [];
+        
+        if ($branchId) {
+            $whereClause .= " AND bi.branch_id = :branch_id";
+            $params['branch_id'] = $branchId;
+        }
+        
+        if ($categoryId) {
+            $whereClause .= " AND p.category_id = :category_id";
+            $params['category_id'] = $categoryId;
+        }
+
+        switch ($reportType) {
+            case 'stock_levels':
+                $colRow = dbFetch(
+                    "SELECT COLUMN_NAME 
+                     FROM information_schema.columns 
+                     WHERE table_schema = :schema 
+                       AND table_name = 'branch_inventory' 
+                       AND COLUMN_NAME IN ('quantity','stock_quantity')
+                     ORDER BY FIELD(COLUMN_NAME, 'quantity','stock_quantity')
+                     LIMIT 1",
+                    ['schema' => DB_NAME]
+                );
+                $stockCol = $colRow['COLUMN_NAME'] ?? 'quantity';
+                
+                $sql = "SELECT 
+                    p.product_name,
+                    p.product_code,
+                    p.category_id,
+                    bi.{$stockCol} as current_stock,
+                    COALESCE(bi.min_stock, 0) as min_stock,
+                    CASE WHEN bi.{$stockCol} <= COALESCE(bi.min_stock, 0) THEN 'Low Stock' ELSE 'OK' END as stock_status
+                    FROM branch_inventory bi
+                    JOIN products p ON bi.product_id = p.id_product
+                    $whereClause
+                    ORDER BY stock_status, p.product_name";
+                break;
+                
+            case 'valuation':
+                $colRow = dbFetch(
+                    "SELECT COLUMN_NAME 
+                     FROM information_schema.columns 
+                     WHERE table_schema = :schema 
+                       AND table_name = 'branch_inventory' 
+                       AND COLUMN_NAME IN ('quantity','stock_quantity')
+                     ORDER BY FIELD(COLUMN_NAME, 'quantity','stock_quantity')
+                     LIMIT 1",
+                    ['schema' => DB_NAME]
+                );
+                $stockCol = $colRow['COLUMN_NAME'] ?? 'quantity';
+                
+                $sql = "SELECT 
+                    p.product_name,
+                    bi.{$stockCol} as quantity,
+                    COALESCE(p.purchase_price, 0) as unit_cost,
+                    (bi.{$stockCol} * COALESCE(p.purchase_price, 0)) as total_value
+                    FROM branch_inventory bi
+                    JOIN products p ON bi.product_id = p.id_product
+                    $whereClause
+                    ORDER BY total_value DESC";
+                break;
+                
+            default:
+                throw new Exception("Invalid report type: $reportType");
+        }
+
+        return dbFetchAll($sql, $params);
+    }
+
+    private function generateFinancialReportData($startDate, $endDate, $reportType)
+    {
+        $whereClause = "WHERE created_at BETWEEN :start_date AND :end_date";
+        $params = ['start_date' => $startDate, 'end_date' => $endDate];
+
+        switch ($reportType) {
+            case 'profit_loss':
+                $sql = "SELECT 
+                    'Revenue' as category,
+                    COALESCE(SUM(total_amount), 0) as amount
+                    FROM transactions
+                    $whereClause
+                    UNION ALL
+                    SELECT 
+                    'Expenses' as category,
+                    0 as amount -- TODO: Implement expense tracking
+                    UNION ALL
+                    SELECT 
+                    'Net Profit/Loss' as category,
+                    COALESCE(SUM(total_amount), 0) as amount -- TODO: Subtract expenses
+                    FROM transactions
+                    $whereClause";
+                break;
+                
+            default:
+                throw new Exception("Invalid report type: $reportType");
+        }
+
+        return dbFetchAll($sql, $params);
+    }
+
+    private function generateCustomerReportData($startDate, $endDate, $reportType)
+    {
+        // TODO: Implement customer reports when customer system is built
+        return [
+            'message' => 'Customer reports will be available after customer management system implementation'
+        ];
+    }
+
+    private function generateBranchPerformanceData($startDate, $endDate, $companyId, $reportType)
+    {
+        $whereClause = "WHERE t.created_at BETWEEN :start_date AND :end_date";
+        $params = ['start_date' => $startDate, 'end_date' => $endDate];
+        
+        if ($companyId) {
+            $whereClause .= " AND c.id_company = :company_id";
+            $params['company_id'] = $companyId;
+        }
+
+        switch ($reportType) {
+            case 'comparison':
+                $sql = "SELECT 
+                    c.company_name,
+                    b.branch_name,
+                    COUNT(*) as transactions,
+                    COALESCE(SUM(t.total_amount), 0) as revenue,
+                    COALESCE(AVG(t.total_amount), 0) as avg_transaction
+                    FROM transactions t
+                    LEFT JOIN branches b ON t.branch_id = b.id_branch
+                    LEFT JOIN companies c ON b.company_id = c.id_company
+                    $whereClause
+                    GROUP BY c.id_company, c.company_name, b.id_branch, b.branch_name
+                    ORDER BY revenue DESC";
+                break;
+                
+            default:
+                throw new Exception("Invalid report type: $reportType");
+        }
+
+        return dbFetchAll($sql, $params);
+    }
+
+    private function exportReportData($reportType, $format, $filters)
+    {
+        // TODO: Implement export functionality
+        return [
+            'success' => false,
+            'error' => 'Export functionality will be implemented in Phase 2'
+        ];
+    }
+
+    private function getAllCompanies()
+    {
+        try {
+            return dbFetchAll("SELECT id_company, company_name FROM companies ORDER BY company_name");
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    private function getAllBranches()
+    {
+        try {
+            return dbFetchAll("SELECT id_branch, branch_name FROM branches ORDER BY branch_name");
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    protected function getUserRole()
+    {
+        return $_SESSION['user_role'] ?? 'staff';
+    }
+}

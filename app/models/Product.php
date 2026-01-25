@@ -29,6 +29,19 @@ class Product extends Model {
     ];
     
     /**
+     * Get active products
+     */
+    public function getActive() {
+        $sql = "SELECT p.*, c.name as category_name
+                FROM {$this->table} p
+                LEFT JOIN categories c ON p.category_id = c.id_category
+                WHERE p.is_active = 1
+                ORDER BY p.product_name";
+        
+        return $this->query($sql);
+    }
+    
+    /**
      * Get all products with category info
      */
     public function getAll($limit = 10, $offset = 0, $filters = []) {

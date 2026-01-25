@@ -197,15 +197,178 @@ class Controller {
      * Get Current User Role
      */
     protected function getUserRole() {
-        return $this->isLoggedIn() ? $_SESSION['user_role'] : null;
+        return $this->isLoggedIn() ? $_SESSION['business_role'] : null;
     }
     
     /**
-     * Check User Permission
+     * Get Application Role
+     */
+    protected function getAppRole() {
+        return $this->isLoggedIn() ? $_SESSION['app_role'] : null;
+    }
+    
+    /**
+     * Check if user has individual business
+     */
+    protected function isIndividualBusiness() {
+        $userCompanyId = $this->getUserCompanyId();
+        $userBranchId = $this->getUserBranchId();
+        
+        // Individual business has company but no branch (or single main branch)
+        if ($userCompanyId && $userBranchId) {
+            // Check if this is the main branch of an individual business
+            $branchModel = new \Branch();
+            $branches = $branchModel->getByCompany($userCompanyId);
+            
+            // If only one branch exists, it's likely an individual business
+            if (count($branches) === 1) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Get User Company ID
+     */
+    protected function getUserCompanyId() {
+        return $this->isLoggedIn() ? $_SESSION['company_id'] : null;
+    }
+    
+    /**
+     * Get User Branch ID
+     */
+    protected function getUserBranchId() {
+        return $this->isLoggedIn() ? $_SESSION['branch_id'] : null;
+    }
+    
+    /**
+     * Get unread notification count
+     */
+    protected function getUnreadCount() {
+        if (!$this->isLoggedIn()) {
+            return 0;
+        }
+        
+        $notificationModel = new \Notification();
+        return $notificationModel->getUnreadCount($_SESSION['user_id']);
+    }
+    
+    /**
+     * Check User Permission (Business Role)
      */
     protected function hasPermission($requiredRole) {
         $userRole = $this->getUserRole();
         return $userRole && $userRole <= $requiredRole; // Lower number = higher permission
+    }
+    
+    /**
+     * Check Application Permission
+     */
+    protected function hasAppPermission($requiredRole) {
+        $appRole = $this->getAppRole();
+        return $appRole && $appRole <= $requiredRole;
+    }
+    
+    /**
+     * Require specific permission (Business Role)
+     */
+    protected function requirePermission($requiredRole) {
+        $this->requireAuth();
+        
+        if (!$this->hasPermission($requiredRole)) {
+            $_SESSION['flash_error'] = 'Access denied. You don\'t have permission to access this page.';
+            header('Location: index.php?page=dashboard');
+            exit;
+        }
+    }
+    
+    /**
+     * Require application permission
+     */
+    protected function requireAppPermission($requiredRole) {
+        $this->requireAuth();
+        
+        if (!$this->hasAppPermission($requiredRole)) {
+            $_SESSION['flash_error'] = 'Access denied. You need application administrator privileges.';
+            header('Location: index.php?page=dashboard');
+            exit;
+        }
+    }
+    
+    /**
+     * Check if user can access specific company
+     */
+    protected function canAccessCompany($companyId) {
+        $appRole = $this->getAppRole();
+        
+        // Application owners can access all companies
+        if ($appRole <= ROLE_APP_ADMIN) {
+            return true;
+        }
+        
+        // Business users can only access their own company
+        return $_SESSION['company_id'] == $companyId;
+    }
+    
+    /**
+     * Require company access
+     */
+    protected function requireCompanyAccess($companyId) {
+        $this->requireAuth();
+        
+        if (!$this->canAccessCompany($companyId)) {
+            $_SESSION['flash_error'] = 'Access denied. You don\'t have permission to access this company.';
+            header('Location: index.php?page=dashboard');
+            exit;
+        }
+    }
+    
+    /**
+     * Check if user can access specific branch
+     */
+    protected function canAccessBranch($branchId) {
+        $appRole = $this->getAppRole();
+        
+        // Application owners can access all branches
+        if ($appRole <= ROLE_APP_ADMIN) {
+            return true;
+        }
+        
+        // Company owners can access all branches in their company
+        if ($appRole === null && $this->getUserRole() <= ROLE_COMPANY_OWNER) {
+            $userCompanyId = $this->getUserCompanyId();
+            // Check if branch belongs to user's company
+            $branchModel = new \Branch();
+            $branch = $branchModel->getById($branchId);
+            return $branch && $branch['company_id'] == $userCompanyId;
+        }
+        
+        // Managers can access their own branch
+        if ($this->getUserRole() <= ROLE_MANAGER) {
+            return $_SESSION['branch_id'] == $branchId;
+        }
+        
+        // Individual businesses can access their single branch
+        if ($this->isIndividualBusiness()) {
+            return $this->getUserBranchId() == $branchId;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Require branch access
+     */
+    protected function requireBranchAccess($branchId) {
+        $this->requireAuth();
+        
+        if (!$this->canAccessBranch($branchId)) {
+            $_SESSION['flash_error'] = 'Access denied. You don\'t have permission to access this branch.';
+            header('Location: index.php?page=dashboard');
+            exit;
+        }
     }
     
     /**
@@ -231,17 +394,6 @@ class Controller {
     }
     
     /**
-     * Require Permission
-     */
-    protected function requirePermission($requiredRole) {
-        $this->requireAuth();
-        
-        if (!$this->hasPermission($requiredRole)) {
-            $this->error('Access denied', 403);
-        }
-    }
-    
-    /**
      * Get POST Data
      */
     protected function post($key = null, $default = null) {
@@ -261,6 +413,77 @@ class Controller {
         }
         
         return isset($_GET[$key]) ? $_GET[$key] : $default;
+    }
+    
+    /**
+     * Check if feature is enabled for current company
+     */
+    protected function isFeatureEnabled($featureKey) {
+        if (!$this->isLoggedIn()) {
+            return false;
+        }
+        
+        $companyId = $this->getUserCompanyId();
+        if (!$companyId) {
+            return false;
+        }
+        
+        try {
+            $featureSettings = new \FeatureSettings();
+            return $featureSettings->isFeatureEnabled($companyId, $featureKey);
+        } catch (Exception $e) {
+            error_log("Error checking feature {$featureKey}: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Require feature to be enabled
+     */
+    protected function requireFeature($featureKey) {
+        $this->requireAuth();
+        
+        if (!$this->isFeatureEnabled($featureKey)) {
+            $_SESSION['flash_error'] = 'Fitur tidak tersedia. Silakan hubungi administrator perusahaan Anda.';
+            header('Location: index.php?page=dashboard');
+            exit;
+        }
+    }
+    
+    /**
+     * Require feature for API (JSON error)
+     */
+    protected function requireFeatureJson($featureKey) {
+        $this->requireAuthJson();
+        
+        if (!$this->isFeatureEnabled($featureKey)) {
+            $this->json([
+                'status' => 'error',
+                'message' => 'Fitur tidak tersedia'
+            ], 403);
+        }
+    }
+    
+    /**
+     * Get enabled features for current company
+     */
+    protected function getEnabledFeatures() {
+        if (!$this->isLoggedIn()) {
+            return [];
+        }
+        
+        $companyId = $this->getUserCompanyId();
+        if (!$companyId) {
+            return [];
+        }
+        
+        try {
+            $featureSettings = new \FeatureSettings();
+            return $featureSettings->getEnabledFeatures($companyId);
+        } catch (Exception $e) {
+            error_log("Error getting enabled features: " . $e->getMessage());
+            return [];
+        }
     }
     
     /**

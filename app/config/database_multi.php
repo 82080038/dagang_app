@@ -13,18 +13,25 @@
  */
 
 // Database Configuration
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
+if (!defined('DB_HOST')) {
+    define('DB_HOST', 'localhost')
+if (!defined('DB_USER')) {
+    define('DB_USER', 'root')
+if (!defined('DB_PASS')) {
+    define('DB_PASS', '')
+if (!defined('DB_CHARSET')) {
+    define('DB_CHARSET', 'utf8mb4')
 
 // Main Application Database
-define('DB_NAME_MAIN', 'perdagangan_system');
-define('DB_NAME_ADDRESS', 'alamat_db');
+if (!defined('DB_NAME_MAIN')) {
+    define('DB_NAME_MAIN', 'perdagangan_system')
+if (!defined('DB_NAME_ADDRESS')) {
+    define('DB_NAME_ADDRESS', 'alamat_db')
 
 // Database Connections
 $main_db = new PDO(
     "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME_MAIN . ";charset=" . DB_CHARSET,
+    }
     DB_USER,
     DB_PASS,
     [
@@ -46,8 +53,10 @@ $address_db = new PDO(
 );
 
 // Database Access Rules
-define('DB_MAIN_READ_WRITE', true);  // Can read and write
-define('DB_ADDRESS_READ_ONLY', true); // Read-only access
+if (!defined('DB_MAIN_READ_WRITE')) {
+    define('DB_MAIN_READ_WRITE', true)
+if (!defined('DB_ADDRESS_READ_ONLY')) {
+    define('DB_ADDRESS_READ_ONLY', true)
 
 // Address Database Tables (Reference Only)
 $address_tables = [
@@ -56,6 +65,7 @@ $address_tables = [
     'districts' => 'id_district, id_regency, name',
     'villages' => 'id_village, id_district, name'
 ];
+    }
 
 // Main Database Tables (Application Data)
 $main_tables = [

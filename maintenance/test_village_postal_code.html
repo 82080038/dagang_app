@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Village ID & Postal Code</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h3>Test Village ID & Postal Code Relationship</h3>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Village ID</label>
+                    <select id="village_id" class="form-select">
+                        <option value="">Pilih Village</option>
+                        <option value="1" data-postal-code="12345">Village 1 (12345)</option>
+                        <option value="2" data-postal-code="67890">Village 2 (67890)</option>
+                        <option value="3">Village 3 (No Postal Code)</option>
+                        <option value="999">Village 999 (Invalid)</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Postal Code</label>
+                    <input type="text" id="postal_code" class="form-control" readonly>
+                </div>
+                
+                <div class="alert alert-info">
+                    <strong>Test Instructions:</strong><br>
+                    1. Pilih "Village 1" → Postal code harus "12345"<br>
+                    2. Pilih "Village 2" → Postal code harus "67890"<br>
+                    3. Pilih "Village 3" → Postal code harus kosong (API call)<br>
+                    4. Pilih "Village 999" → Postal code harus kosong (API error)<br>
+                    5. Pilih kosong → Postal code harus kosong
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $("#village_id").on("change", function() {
+                var selectedOption = $(this).find("option:selected");
+                var postalCode = selectedOption.data("postal-code");
+                var villageId = $(this).val();
+                
+                console.log("Village changed:", {
+                    villageId: villageId,
+                    postalCode: postalCode
+                });
+                
+                // Always clear postal code first when village changes
+                $("#postal_code").val("");
+                console.log("Postal code cleared");
+                
+                if (villageId && postalCode) {
+                    // Set postal code if available in option data
+                    $("#postal_code").val(postalCode);
+                    console.log("Postal code set from option data:", postalCode);
+                } else if (villageId) {
+                    // Fetch from API if village is selected but no postal code in data
+                    console.log("Fetching postal code from API for village:", villageId);
+                    $.ajax({
+                        url: "index.php?page=address&action=get-postal-code&village_id=" + villageId,
+                        type: "GET",
+                        dataType: "json",
+                        success: function(response) {
+                            console.log("API response:", response);
+                            if (response.status == "success" && response.data.postal_code) {
+                                $("#postal_code").val(response.data.postal_code);
+                                console.log("Postal code set from API:", response.data.postal_code);
+                            } else {
+                                console.log("No postal code found in API response");
+                            }
+                            // If no postal code found, keep field empty (already cleared above)
+                        },
+                        error: function(xhr, status, error) {
+                            console.log("API error:", {status: status, error: error});
+                            // Keep field empty on error (already cleared above)
+                        }
+                    });
+                } else {
+                    console.log("Village is empty, postal code remains empty");
+                }
+            });
+        });
+    </script>
+</body>
+</html>

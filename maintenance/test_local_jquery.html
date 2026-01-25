@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Local jQuery</title>
+</head>
+<body>
+    <h1>Testing Local jQuery</h1>
+    <div id="test-result">Testing...</div>
+    
+    <!-- jQuery with local primary and CDN fallbacks -->
+    <script src="../public/assets/js/jquery-3.6.0.min.js"></script>
+    <script>
+        // Check if local jQuery loaded, if not try CDN
+        if (typeof $ === 'undefined') {
+            console.log('Local jQuery failed, trying CDN fallback...');
+            document.getElementById('test-result').innerHTML = '<br>❌ Local jQuery failed, trying CDN...';
+            
+            var jqueryScript = document.createElement('script');
+            jqueryScript.src = 'https://code.jquery.com/jquery-3.6.0.min.js';
+            jqueryScript.onload = function() {
+                console.log('jQuery loaded from CDN fallback');
+                document.getElementById('test-result').innerHTML += '<br>✅ jQuery loaded from CDN fallback';
+                testJQuery();
+            };
+            jqueryScript.onerror = function() {
+                console.log('jQuery CDN failed, trying Google CDN...');
+                document.getElementById('test-result').innerHTML += '<br>❌ jQuery CDN failed, trying Google CDN...';
+                
+                var googleScript = document.createElement('script');
+                googleScript.src = 'https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js';
+                googleScript.onload = function() {
+                    console.log('jQuery loaded from Google CDN');
+                    document.getElementById('test-result').innerHTML += '<br>✅ jQuery loaded from Google CDN';
+                    testJQuery();
+                };
+                googleScript.onerror = function() {
+                    console.error('All jQuery sources failed');
+                    document.getElementById('test-result').innerHTML += '<br>❌ All jQuery sources failed';
+                };
+                document.head.appendChild(googleScript);
+            };
+            document.head.appendChild(jqueryScript);
+        } else {
+            console.log('Local jQuery loaded successfully');
+            document.getElementById('test-result').innerHTML = '✅ Local jQuery loaded successfully';
+            testJQuery();
+        }
+        
+        function testJQuery() {
+            if (typeof $ !== 'undefined') {
+                try {
+                    $('#test-result').append('<br><br>✅ jQuery functionality test passed');
+                    $('#test-result').css('color', 'green');
+                    console.log('jQuery version:', $.fn.jquery);
+                    $('#test-result').append('<br>jQuery version: ' + $.fn.jquery);
+                } catch (e) {
+                    $('#test-result').append('<br><br>❌ jQuery functionality test failed: ' + e.message);
+                    $('#test-result').css('color', 'red');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -12,6 +12,7 @@ class Model {
     protected $primaryKey = 'id';
     protected $fillable = [];
     protected $hidden = [];
+    protected $errors = [];
     
     public function __construct() {
         $this->db = Database::getInstance();
@@ -193,6 +194,19 @@ class Model {
     }
     
     /**
+     * Execute Raw SQL Query
+     */
+    public function execute($sql, $params = []) {
+        try {
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute($params);
+        } catch (Exception $e) {
+            error_log("SQL Error: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
      * Get POST Data
      */
     public function post($key = null, $default = null) {
@@ -232,6 +246,41 @@ class Model {
         }
         
         return $errors;
+    }
+    
+    /**
+     * Set error message
+     */
+    protected function setError($message) {
+        $this->errors[] = $message;
+    }
+    
+    /**
+     * Get all errors
+     */
+    public function getErrors() {
+        return $this->errors;
+    }
+    
+    /**
+     * Get first error
+     */
+    public function getFirstError() {
+        return !empty($this->errors) ? $this->errors[0] : null;
+    }
+    
+    /**
+     * Clear all errors
+     */
+    public function clearErrors() {
+        $this->errors = [];
+    }
+    
+    /**
+     * Check if has errors
+     */
+    public function hasErrors() {
+        return !empty($this->errors);
     }
 }
 ?>

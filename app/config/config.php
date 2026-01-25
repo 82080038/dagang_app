@@ -5,11 +5,16 @@
  * Konstanta dan pengaturan utama aplikasi
  */
 
-// Application Settings
-define('APP_NAME', 'Aplikasi Perdagangan');
-define('APP_VERSION', '1.0.0');
-define('APP_DEBUG', true);
-define('APP_ENV', 'development');
+// Email Settings (untuk notifikasi)
+if (!defined('MAIL_ENABLED')) {
+    define('MAIL_ENABLED', false);
+}
+if (!defined('MAIL_FROM')) {
+    define('MAIL_FROM', 'noreply@dagang.com');
+}
+if (!defined('MAIL_FROM_NAME')) {
+    define('MAIL_FROM_NAME', 'Aplikasi Perdagangan');
+}
 
 // URL Settings
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
@@ -26,63 +31,85 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'perdagangan_system');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
 
 // Currency & Number Formatting
-define('CURRENCY_SYMBOL', 'Rp');
-define('DECIMAL_PLACES', 0);
 define('DECIMAL_SEPARATOR', ',');
 define('THOUSANDS_SEPARATOR', '.');
 
 // Date & Time
-define('DATE_FORMAT', 'd M Y');
-define('DATETIME_FORMAT', 'd M Y H:i:s');
 define('TIMEZONE', 'Asia/Jakarta');
 
 // File Upload
 define('UPLOAD_PATH', __DIR__ . '/../uploads');
-define('MAX_FILE_SIZE', 5242880); // 5MB
-define('ALLOWED_IMAGE_TYPES', ['jpg', 'jpeg', 'png', 'gif']);
 
 // Pagination
-define('ITEMS_PER_PAGE', 20);
+if (!defined('ITEMS_PER_PAGE')) {
+    define('ITEMS_PER_PAGE', 20);
+}
 
 // Session
-define('SESSION_LIFETIME', 7200); // 2 hours
-define('SESSION_NAME', 'dagang_session');
+if (!defined('SESSION_LIFETIME')) {
+    define('SESSION_LIFETIME', 7200); // 2 hours
+}
+if (!defined('SESSION_NAME')) {
+    define('SESSION_NAME', 'dagang_session');
+}
+if (!defined('SESSION_SECURE')) {
+    define('SESSION_SECURE', false); // Set to false for development, true for production
+}
+if (!defined('SESSION_HTTP_ONLY')) {
+    define('SESSION_HTTP_ONLY', true); // Prevent JavaScript access
+}
+if (!defined('SESSION_SAMESITE')) {
+    define('SESSION_SAMESITE', 'Strict'); // CSRF protection
+}
+if (!defined('SESSION_STRICT_MODE')) {
+    define('SESSION_STRICT_MODE', true); // Prevent session fixation
+}
 
 // Security
-define('CSRF_TOKEN_NAME', 'csrf_token');
-define('HASH_ALGORITHM', 'sha256');
+if (!defined('CSRF_TOKEN_NAME')) {
+    define('CSRF_TOKEN_NAME', 'csrf_token');
+}
+if (!defined('HASH_ALGORITHM')) {
+    define('HASH_ALGORITHM', 'sha256');
+}
 
-// Logging
-define('LOG_ENABLED', true);
-define('LOG_PATH', __DIR__ . '/../logs');
-
-// Email Settings (untuk notifikasi)
-define('MAIL_ENABLED', false);
-define('MAIL_FROM', 'noreply@dagang.com');
-define('MAIL_FROM_NAME', APP_NAME);
+// Security Headers
+if (!defined('SECURITY_HEADERS')) {
+    define('SECURITY_HEADERS', false); // Set to false for development, true for production
+}
+if (!defined('X_FRAME_OPTIONS')) {
+    define('X_FRAME_OPTIONS', 'DENY');
+}
+if (!defined('X_CONTENT_TYPE_OPTIONS')) {
+    define('X_CONTENT_TYPE_OPTIONS', 'nosniff');
+}
+if (!defined('X_XSS_PROTECTION')) {
+    define('X_XSS_PROTECTION', '1; mode=block');
+}
+if (!defined('STRICT_TRANSPORT_SECURITY')) {
+    define('STRICT_TRANSPORT_SECURITY', 'max-age=31536000; includeSubDomains');
+}
+if (!defined('CONTENT_SECURITY_POLICY')) {
+    define('CONTENT_SECURITY_POLICY', false); // DISABLED for development
+}
 
 // Cache
-define('CACHE_ENABLED', false);
 define('CACHE_DIR', __DIR__ . '/../cache');
 
-// API Settings
-define('API_VERSION', 'v1');
-define('API_RATE_LIMIT', 100); // requests per hour
+// Environment Settings (only if not already defined)
+if (!defined('APP_DEBUG')) {
+    define('APP_DEBUG', true); // Set to false in production for security
+}
+if (!defined('APP_ENV')) {
+    define('APP_ENV', 'development'); // development, staging, production
+}
 
 // Business Logic Constants
 define('MIN_STOCK_LEVEL', 10);
 define('LOW_STOCK_THRESHOLD', 5);
 define('DEFAULT_TAX_RATE', 0.11); // 11%
-
-// User Roles
-define('ROLE_ADMIN', 1);
-define('ROLE_MANAGER', 2);
-define('ROLE_SUPERVISOR', 3);
-define('ROLE_CASHIER', 4);
-define('ROLE_STAFF', 5);
 
 // Branch Types
 define('BRANCH_TYPE_PUSAT', 'pusat');
@@ -90,25 +117,20 @@ define('BRANCH_TYPE_TOKO', 'toko');
 define('BRANCH_TYPE_WARUNG', 'warung');
 define('BRANCH_TYPE_MINIMARKET', 'minimarket');
 
-// Transaction Types
-define('TRANSACTION_SALE', 'SALE');
-define('TRANSACTION_PURCHASE', 'PURCHASE');
-define('TRANSACTION_TRANSFER', 'TRANSFER');
-define('TRANSACTION_ADJUSTMENT', 'ADJUSTMENT');
-
-// Payment Methods
-define('PAYMENT_CASH', 'CASH');
-define('PAYMENT_TRANSFER', 'TRANSFER');
-define('PAYMENT_EDC', 'EDC');
-define('PAYMENT_EWALLET', 'EWALLET');
-
 // Set timezone
 date_default_timezone_set(TIMEZONE);
 
-// Set session settings (hanya jika session belum aktif)
-if (session_status() === PHP_SESSION_NONE) {
+// Set session settings (hanya jika session belum aktif dan headers belum sent)
+if (session_status() === PHP_SESSION_NONE && !headers_sent()) {
     ini_set('session.cookie_lifetime', SESSION_LIFETIME);
     ini_set('session.name', SESSION_NAME);
+    ini_set('session.cookie_httponly', SESSION_HTTP_ONLY);
+    ini_set('session.cookie_secure', SESSION_SECURE);
+    ini_set('session.cookie_samesite', SESSION_SAMESITE);
+    ini_set('session.use_strict_mode', SESSION_STRICT_MODE);
+    ini_set('session.gc_maxlifetime', SESSION_LIFETIME);
+    ini_set('session.cookie_path', '/');
+    ini_set('session.cookie_domain', '');
 }
 
 // Error reporting based on environment

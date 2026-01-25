@@ -245,6 +245,44 @@ class Member extends Model {
     }
     
     /**
+     * Get all members with filters
+     */
+    public function getAll($limit = null, $offset = 0, $search = '', $companyId = null, $branchId = null) {
+        $sql = "SELECT m.*, b.branch_name, c.company_name
+                FROM {$this->table} m
+                LEFT JOIN branches b ON m.branch_id = b.id_branch
+                LEFT JOIN companies c ON b.company_id = c.id_company
+                WHERE m.is_active = 1";
+        
+        $params = [];
+        
+        if ($search) {
+            $sql .= " AND (m.member_name LIKE :search OR m.member_code LIKE :search)";
+            $params['search'] = '%' . $search . '%';
+        }
+        
+        if ($companyId) {
+            $sql .= " AND c.id_company = :company_id";
+            $params['company_id'] = $companyId;
+        }
+        
+        if ($branchId) {
+            $sql .= " AND m.branch_id = :branch_id";
+            $params['branch_id'] = $branchId;
+        }
+        
+        $sql .= " ORDER BY m.member_name";
+        
+        if ($limit) {
+            $sql .= " LIMIT :limit OFFSET :offset";
+            $params['limit'] = $limit;
+            $params['offset'] = $offset;
+        }
+        
+        return $this->query($sql, $params);
+    }
+    
+    /**
      * Search members
      */
     public function search($keyword, $branchId = null) {
@@ -253,11 +291,10 @@ class Member extends Model {
                     b.branch_name,
                     c.company_name
                 FROM {$this->table} m
-                LEFT JOIN branches b ON m.branch_id = b.branch_id
+                LEFT JOIN branches b ON m.branch_id = b.id_branch
                 LEFT JOIN companies c ON b.company_id = c.id_company
-                WHERE (m.member_code LIKE :keyword 
-                    OR m.member_name LIKE :keyword 
-                    OR m.email LIKE :keyword)";
+                WHERE m.is_active = 1 
+                AND (m.member_name LIKE :keyword OR m.member_code LIKE :keyword)";
         
         $params = ['keyword' => '%' . $keyword . '%'];
         

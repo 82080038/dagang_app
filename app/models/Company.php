@@ -20,8 +20,6 @@ class Company extends Model {
         'phone',
         'email',
         'address_id',
-        'tax_id',
-        'business_license',
         'is_active',
         'last_sync_at',
         'sync_status',
@@ -212,18 +210,19 @@ class Company extends Model {
     public function validateCompany($data) {
         $rules = [
             'company_name' => 'required|min:3|max:200',
-            'company_code' => 'required|min:2|max:50',
+            'company_code' => 'min:2|max:50',
             'company_type' => 'required',
             'scalability_level' => 'required|in:1,2,3,4,5,6',
             'owner_name' => 'required|min:3|max:200',
             'email' => 'email',
             'phone' => 'min:10|max:20',
             'address_id' => 'integer',
-            'street_address' => 'required|min:3|max:255',
+            'address_detail' => 'required|min:3|max:255',
             'province_id' => 'required|numeric',
             'regency_id' => 'required|numeric',
             'district_id' => 'required|numeric',
-            'village_id' => 'required|numeric'
+            'village_id' => 'required|numeric',
+            'postal_code' => 'max:10'
         ];
         
         return $this->validate($data, $rules);
@@ -234,9 +233,9 @@ class Company extends Model {
      */
     public function createCompany($data) {
         // Handle address creation if address data provided
-        if (isset($data['street_address']) && !isset($data['address_id'])) {
+        if (isset($data['address_detail']) && !isset($data['address_id'])) {
             $addressData = [
-                'street_address' => $data['street_address'],
+                'street_address' => $data['address_detail'],
                 'province_id' => $data['province_id'] ?? null,
                 'regency_id' => $data['regency_id'] ?? null,
                 'district_id' => $data['district_id'] ?? null,
@@ -249,7 +248,7 @@ class Company extends Model {
             $data['address_id'] = $addressId;
             
             // Remove address fields from company data
-            unset($data['street_address'], $data['province_id'], $data['regency_id'], 
+            unset($data['address_detail'], $data['province_id'], $data['regency_id'], 
                   $data['district_id'], $data['village_id'], $data['postal_code']);
         }
         
@@ -261,9 +260,9 @@ class Company extends Model {
      */
     public function updateCompany($id, $data) {
         // Handle address update if address data provided
-        if (isset($data['address_detail']) && isset($data['address_id'])) {
+        if (isset($data['address_detail'])) {
             $addressData = [
-                'address_detail' => $data['address_detail'],
+                'street_address' => $data['address_detail'],
                 'province_id' => $data['province_id'] ?? null,
                 'regency_id' => $data['regency_id'] ?? null,
                 'district_id' => $data['district_id'] ?? null,
@@ -272,10 +271,18 @@ class Company extends Model {
             ];
             
             $addressModel = new Address();
-            $addressModel->updateAddress($data['address_id'], $addressData);
+            
+            // Update existing address if address_id exists, create new if not
+            if (isset($data['address_id']) && $data['address_id']) {
+                $addressModel->updateAddress($data['address_id'], $addressData);
+            } else {
+                // Create new address if no address_id
+                $addressId = $addressModel->createAddress($addressData);
+                $data['address_id'] = $addressId;
+            }
             
             // Remove address fields from company data
-            unset($data['street_address'], $data['province_id'], $data['regency_id'], 
+            unset($data['address_detail'], $data['province_id'], $data['regency_id'], 
                   $data['district_id'], $data['village_id'], $data['postal_code']);
         }
         
